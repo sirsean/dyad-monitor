@@ -4,6 +4,7 @@ import { readFile } from 'fs/promises';
 
 const VAULT_MANAGER_ADDRESS = '0xB62bdb1A6AC97A9B70957DD35357311e8859f0d7';
 const KEROSENE_VAULT_ADDRESS = '0x4808e4CC6a2Ba764778A0351E1Be198494aF0b43';
+const DYAD_LP_STAKING_FACTORY_ADDRESS = '0xD19DCbB8B82805d779a6A2182d8F4355275CC30a';
 const LP_TOKENS = {
   '0xa969cFCd9e583edb8c8B270Dc8CaFB33d6Cf662D': 'DYAD/wM',
   '0x1507bf3F8712c496fA4679a4bA827F633979dBa4': 'DYAD/USDC',
@@ -18,6 +19,10 @@ const vaultManager = await readFile('abi/VaultManagerV5.json', 'utf8')
 const keroseneVault = await readFile('abi/KeroseneVault.json', 'utf8')
   .then(JSON.parse)
   .then(abi => new ethers.Contract(KEROSENE_VAULT_ADDRESS, abi, provider));
+
+const dyadLpStakingFactory = await readFile('abi/DyadLPStakingFactory.json', 'utf8')
+  .then(JSON.parse)
+  .then(abi => new ethers.Contract(DYAD_LP_STAKING_FACTORY_ADDRESS, abi, provider));
 
 const discord = new Client({
   intents: [
@@ -71,10 +76,16 @@ async function noteMessages(noteId) {
   const cr = await vaultManager.collatRatio(noteId);
   messages.push(`CR: ${formatNumber(ethers.formatUnits(cr, 18), 3)}`);
 
+
   const y = await fetchYield(noteId);
   
   const noteXp = y[Object.keys(y)[0]].noteXp;
   messages.push(`XP: ${formatNumber(noteXp, 2)}`);
+
+  const claimed = await dyadLpStakingFactory.noteIdToTotalClaimed(noteId);
+  const r = await fetchRewards(noteId);
+  const claimable = BigInt(r.amount) - claimed;
+  messages.push(`Claimable: ${formatNumber(ethers.formatUnits(claimable, 18))} KERO ($${formatNumber(parseFloat(claimable) * 10 ** -18 * mp, 2)})`);
   
   for (const key in y) {
     const vault = y[key];
