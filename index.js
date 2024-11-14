@@ -5,10 +5,15 @@ import { readFile } from 'fs/promises';
 const VAULT_MANAGER_ADDRESS = '0xB62bdb1A6AC97A9B70957DD35357311e8859f0d7';
 const KEROSENE_VAULT_ADDRESS = '0x4808e4CC6a2Ba764778A0351E1Be198494aF0b43';
 const DYAD_LP_STAKING_FACTORY_ADDRESS = '0xD19DCbB8B82805d779a6A2182d8F4355275CC30a';
+const DYAD_ADDRESS = '0xFd03723a9A3AbE0562451496a9a394D2C4bad4ab';
 const LP_TOKENS = {
   '0xa969cFCd9e583edb8c8B270Dc8CaFB33d6Cf662D': 'DYAD/wM',
   '0x1507bf3F8712c496fA4679a4bA827F633979dBa4': 'DYAD/USDC',
 }
+
+const LOWER_CR = 2.5;
+const TARGET_CR = 2.75;
+const UPPER_CR = 3.0;
 
 const provider = new ethers.JsonRpcProvider(process.env.ALCHEMY_RPC_URL);
 
@@ -23,6 +28,10 @@ const keroseneVault = await readFile('abi/KeroseneVault.json', 'utf8')
 const dyadLpStakingFactory = await readFile('abi/DyadLPStakingFactory.json', 'utf8')
   .then(JSON.parse)
   .then(abi => new ethers.Contract(DYAD_LP_STAKING_FACTORY_ADDRESS, abi, provider));
+
+const dyad = await readFile('abi/Dyad.json', 'utf8')
+  .then(JSON.parse)
+  .then(abi => new ethers.Contract(DYAD_ADDRESS, abi, provider));
 
 const discord = new Client({
   intents: [
@@ -76,7 +85,6 @@ async function noteMessages(noteId) {
   const cr = await vaultManager.collatRatio(noteId);
   messages.push(`CR: ${formatNumber(ethers.formatUnits(cr, 18), 3)}`);
 
-
   const y = await fetchYield(noteId);
   
   const noteXp = y[Object.keys(y)[0]].noteXp;
@@ -106,8 +114,21 @@ async function noteMessages(noteId) {
     }
   }
 
-  //const r = await fetchRewards(noteId);
-  //console.log(r);
+  if (cr < LOWER_CR) {
+    const totalValue = await vaultManager.getTotalValue(noteId);
+    const mintedDyad = await dyad.mintedDyad(noteId);
+    const targetDebt = parseFloat(ethers.formatUnits(totalValue, 18)) / TARGET_CR;
+    const dyadToBurn = parseFloat(ethers.formatUnits(mintedDyad, 18)) - targetDebt;
+    messages.push('---');
+    messages.push(`Recommendation: Burn ${formatNumber(dyadToBurn, 0)} DYAD`);
+  } else if (cr > UPPER_CR) {
+    const totalValue = await vaultManager.getTotalValue(noteId);
+    const mintedDyad = await dyad.mintedDyad(noteId);
+    const targetDebt = parseFloat(ethers.formatUnits(totalValue, 18)) / TARGET_CR;
+    const dyadToMint = targetDebt - parseFloat(ethers.formatUnits(mintedDyad, 18));
+    messages.push('---');
+    messages.push(`Recommendation: Mint ${formatNumber(dyadToMint, 0)} DYAD`);
+  }
 
   return messages.join('\n');
 }
@@ -126,7 +147,10 @@ discord.once('ready', async () => {
 
   // run the program code
   await main()
-    .catch(error => console.error(error))
+    .catch(error => {
+      console.error(error);
+      notify(`Failure: ${error.message}`);
+    })
     // need to do this to let the process end
     .finally(() => discord.destroy());
 });
