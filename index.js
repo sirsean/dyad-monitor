@@ -83,7 +83,8 @@ async function noteMessages(noteId) {
   messages.push(`Note: ${noteId}`);
 
   const cr = await vaultManager.collatRatio(noteId);
-  messages.push(`CR: ${formatNumber(ethers.formatUnits(cr, 18), 3)}`);
+  const crFloat = formatNumber(ethers.formatUnits(cr, 18), 3);
+  messages.push(`CR: ${crFloat}`);
 
   const y = await fetchYield(noteId);
   
@@ -101,7 +102,6 @@ async function noteMessages(noteId) {
       messages.push('---');
       messages.push(`LP: ${LP_TOKENS[vault.lpToken]}`);
       messages.push(`Liquidity: ${formatNumber(vault.noteLiquidity)}`);
-      messages.push(`Bonus: ${formatNumber(vault.effectiveSize, 2)}x`);
 
       const keroPerWeek = parseFloat(vault.kerosenePerYear) / 52;
       messages.push(`KERO/week: ${formatNumber(keroPerWeek)} ($${formatNumber(keroPerWeek * mp, 2)})`);
@@ -114,14 +114,14 @@ async function noteMessages(noteId) {
     }
   }
 
-  if (cr < LOWER_CR) {
+  if (crFloat < LOWER_CR) {
     const totalValue = await vaultManager.getTotalValue(noteId);
     const mintedDyad = await dyad.mintedDyad(noteId);
     const targetDebt = parseFloat(ethers.formatUnits(totalValue, 18)) / TARGET_CR;
     const dyadToBurn = parseFloat(ethers.formatUnits(mintedDyad, 18)) - targetDebt;
     messages.push('---');
     messages.push(`Recommendation: Burn ${formatNumber(dyadToBurn, 0)} DYAD`);
-  } else if (cr > UPPER_CR) {
+  } else if (crFloat > UPPER_CR) {
     const totalValue = await vaultManager.getTotalValue(noteId);
     const mintedDyad = await dyad.mintedDyad(noteId);
     const targetDebt = parseFloat(ethers.formatUnits(totalValue, 18)) / TARGET_CR;
