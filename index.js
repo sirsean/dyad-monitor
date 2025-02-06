@@ -203,6 +203,25 @@ async function main() {
     .argument('<noteId>', 'Note ID to check')
     .action(checkNote);
 
+  program.command('liquidate')
+    .description('Liquidate a note')
+    .argument('<noteId>', 'Note ID to liquidate')
+    .argument('<dyadAmount>', 'Amount of DYAD to liquidate')
+    .action(async (noteId, dyadAmount) => {
+      await initializeContracts();
+      const mintedDyad = await dyad.mintedDyad(noteId);
+      const dyadAmountBigInt = ethers.parseUnits(dyadAmount, 18);
+      
+      if (dyadAmountBigInt > mintedDyad) {
+        console.error(`Cannot liquidate more than the minted amount. Note ${noteId} has ${ethers.formatUnits(mintedDyad, 18)} DYAD minted.`);
+        return;
+      }
+
+      console.log(`Attempting to liquidate ${dyadAmount} DYAD from note ${noteId}`);
+      const cr = await vaultManager.collatRatio(noteId);
+      console.log(`Current collateral ratio: ${ethers.formatUnits(cr, 18)}`);
+    });
+
   await program.parseAsync();
   
   // Cleanup
