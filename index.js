@@ -173,6 +173,16 @@ async function main() {
     .description('Monitor note status and send to Discord')
     .action(monitorCommand);
 
+  program.command('check-note')
+    .description('Check collateral ratio for a specific note')
+    .argument('<noteId>', 'Note ID to check')
+    .action(async (noteId) => {
+      await initializeContracts();
+      const cr = await vaultManager.collatRatio(noteId);
+      const crFloat = formatNumber(ethers.formatUnits(cr, 18), 3);
+      console.log(`Collateral Ratio for Note ${noteId}: ${crFloat}`);
+    });
+
   await program.parseAsync();
   
   // Cleanup
