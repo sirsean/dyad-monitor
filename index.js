@@ -1,6 +1,8 @@
+
 import { Client, GatewayIntentBits } from 'discord.js';
 import { ethers } from 'ethers';
 import { readFile } from 'fs/promises';
+import { Command } from 'commander';
 
 const VAULT_MANAGER_ADDRESS = '0xB62bdb1A6AC97A9B70957DD35357311e8859f0d7';
 const KEROSENE_VAULT_ADDRESS = '0x4808e4CC6a2Ba764778A0351E1Be198494aF0b43';
@@ -15,29 +17,41 @@ const LOWER_CR = 2.5;
 const TARGET_CR = 2.75;
 const UPPER_CR = 3.0;
 
-const provider = new ethers.JsonRpcProvider(process.env.ALCHEMY_RPC_URL);
+let provider;
+let vaultManager;
+let keroseneVault;
+let dyadLpStakingFactory;
+let dyad;
+let discord;
 
-const vaultManager = await readFile('abi/VaultManagerV5.json', 'utf8')
-  .then(JSON.parse)
-  .then(abi => new ethers.Contract(VAULT_MANAGER_ADDRESS, abi, provider));
+async function initializeContracts() {
+  provider = new ethers.JsonRpcProvider(process.env.ALCHEMY_RPC_URL);
 
-const keroseneVault = await readFile('abi/KeroseneVault.json', 'utf8')
-  .then(JSON.parse)
-  .then(abi => new ethers.Contract(KEROSENE_VAULT_ADDRESS, abi, provider));
+  vaultManager = await readFile('abi/VaultManagerV5.json', 'utf8')
+    .then(JSON.parse)
+    .then(abi => new ethers.Contract(VAULT_MANAGER_ADDRESS, abi, provider));
 
-const dyadLpStakingFactory = await readFile('abi/DyadLPStakingFactory.json', 'utf8')
-  .then(JSON.parse)
-  .then(abi => new ethers.Contract(DYAD_LP_STAKING_FACTORY_ADDRESS, abi, provider));
+  keroseneVault = await readFile('abi/KeroseneVault.json', 'utf8')
+    .then(JSON.parse)
+    .then(abi => new ethers.Contract(KEROSENE_VAULT_ADDRESS, abi, provider));
 
-const dyad = await readFile('abi/Dyad.json', 'utf8')
-  .then(JSON.parse)
-  .then(abi => new ethers.Contract(DYAD_ADDRESS, abi, provider));
+  dyadLpStakingFactory = await readFile('abi/DyadLPStakingFactory.json', 'utf8')
+    .then(JSON.parse)
+    .then(abi => new ethers.Contract(DYAD_LP_STAKING_FACTORY_ADDRESS, abi, provider));
 
-const discord = new Client({
-  intents: [
-    GatewayIntentBits.Guilds,
-  ],
-});
+  dyad = await readFile('abi/Dyad.json', 'utf8')
+    .then(JSON.parse)
+    .then(abi => new ethers.Contract(DYAD_ADDRESS, abi, provider));
+}
+
+async function initializeDiscord() {
+  discord = new Client({
+    intents: [GatewayIntentBits.Guilds],
+  });
+
+  await discord.login(process.env.DISCORD_APP_TOKEN);
+  console.log(`Logged in as ${discord.user.tag}!`);
+}
 
 async function notify(message) {
   if (process.env.NODE_ENV == 'dev') {
@@ -133,28 +147,40 @@ async function noteMessages(noteId) {
   return messages.join('\n');
 }
 
-async function main() {
+async function monitorCommand() {
   const noteIds = process.env.NOTE_IDS.split(',');
   const messages = [];
   for (const noteId of noteIds) {
     messages.push(await noteMessages(noteId));
   }
-  notify(messages.join('\n===\n'));
+  await notify(messages.join('\n===\n'));
 }
 
-discord.once('ready', async () => {
-  console.log(`Logged in as ${discord.user.tag}!`);
+async function main() {
+  await initializeContracts();
+  await initializeDiscord();
 
-  // run the program code
-  await main()
-    .catch(error => {
-      console.error(error);
-      notify(`Failure: ${error.message}`);
-    })
-    // need to do this to let the process end
-    .finally(() => discord.destroy());
-});
+  const program = new Command();
+
+  program
+    .name('dyad-monitor')
+    .description('CLI tool for monitoring DYAD notes')
+    .version('1.0.0');
+
+  program.command('monitor')
+    .description('Monitor note status and send to Discord')
+    .action(monitorCommand);
+
+  await program.parseAsync();
+  
+  // Cleanup
+  await discord.destroy();
+}
 
 discord.on('error', console.error);
 
-await discord.login(process.env.DISCORD_APP_TOKEN);
+main().catch(error => {
+  console.error(error);
+  notify(`Failure: ${error.message}`);
+  process.exit(1);
+});
