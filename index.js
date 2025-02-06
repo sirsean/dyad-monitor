@@ -158,6 +158,12 @@ async function monitorCommand() {
   await notify(messages.join('\n===\n'));
 }
 
+async function checkNote(noteId) {
+  const cr = await vaultManager.collatRatio(noteId);
+  const crFloat = formatNumber(ethers.formatUnits(cr, 18), 3);
+  console.log(`Collateral Ratio for Note ${noteId}: ${crFloat}`);
+}
+
 async function main() {
   await initializeContracts();
   await initializeDiscord();
@@ -176,12 +182,7 @@ async function main() {
   program.command('check-note')
     .description('Check collateral ratio for a specific note')
     .argument('<noteId>', 'Note ID to check')
-    .action(async (noteId) => {
-      await initializeContracts();
-      const cr = await vaultManager.collatRatio(noteId);
-      const crFloat = formatNumber(ethers.formatUnits(cr, 18), 3);
-      console.log(`Collateral Ratio for Note ${noteId}: ${crFloat}`);
-    });
+    .action(checkNote);
 
   await program.parseAsync();
   
