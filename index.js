@@ -24,6 +24,12 @@ let dyadLpStakingFactory;
 let dyad;
 let discord;
 
+async function openContract(address, abiFilename) {
+  return readFile(abiFilename, 'utf8')
+    .then(JSON.parse)
+    .then(abi => new ethers.Contract(address, abi, provider));
+}
+
 async function initializeContracts() {
   provider = new ethers.JsonRpcProvider(process.env.ALCHEMY_RPC_URL);
 
@@ -162,9 +168,19 @@ async function checkNote(noteId) {
   const cr = await vaultManager.collatRatio(noteId);
   const crFloat = formatNumber(ethers.formatUnits(cr, 18), 3);
   console.log(`Collateral Ratio for Note ${noteId}: ${crFloat}`);
+
+  const mintedDyad = await dyad.mintedDyad(noteId);
+  console.log(`Minted DYAD: $${ethers.formatUnits(mintedDyad, 18)}`);
   
   const vaults = await vaultManager.getVaults(noteId);
-  console.log(`Vaults for Note ${noteId}:`, vaults);
+  vaults.forEach(async (vaultAddress) => {
+    const vault = await openContract(vaultAddress, 'abi/Vault.json');
+    const assetAddress = await vault.asset();
+    const asset = await openContract(assetAddress, 'abi/ERC20.json');
+    const symbol = await asset.symbol();
+    const usdValue = await vault.getUsdValue(noteId);
+    console.log(`${symbol}: $${formatNumber(ethers.formatUnits(usdValue, 18), 2)}`);
+  });
 }
 
 async function main() {
