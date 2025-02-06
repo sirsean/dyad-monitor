@@ -49,6 +49,8 @@ async function initializeDiscord() {
     intents: [GatewayIntentBits.Guilds],
   });
 
+  discord.on('error', console.error);
+
   await discord.login(process.env.DISCORD_APP_TOKEN);
   console.log(`Logged in as ${discord.user.tag}!`);
 }
@@ -176,8 +178,6 @@ async function main() {
   // Cleanup
   await discord.destroy();
 }
-
-discord.on('error', console.error);
 
 main().catch(error => {
   console.error(error);

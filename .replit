@@ -1,4 +1,5 @@
 entrypoint = "index.js"
+run = ["node", "index.js", "monitor"]
 modules = ["nodejs-20"]
 hidden = [".config", "package-lock.json"]
 
@@ -12,6 +13,6 @@ channel = "stable-24_05"
 language = "nodejs"
 
 [deployment]
-run = ["node", "index.js"]
+run = ["node", "index.js", "monitor"]
 deploymentTarget = "scheduled"
 ignorePorts = false
