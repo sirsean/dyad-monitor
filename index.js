@@ -162,6 +162,9 @@ async function checkNote(noteId) {
   const cr = await vaultManager.collatRatio(noteId);
   const crFloat = formatNumber(ethers.formatUnits(cr, 18), 3);
   console.log(`Collateral Ratio for Note ${noteId}: ${crFloat}`);
+  
+  const vaults = await vaultManager.getVaults(noteId);
+  console.log(`Vaults for Note ${noteId}:`, vaults);
 }
 
 async function main() {
