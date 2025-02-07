@@ -17,7 +17,9 @@ const LOWER_CR = 2.5;
 const TARGET_CR = 2.75;
 const UPPER_CR = 3.0;
 
-let provider;
+const provider = new ethers.JsonRpcProvider(process.env.ALCHEMY_RPC_URL);
+
+let wallet;
 let vaultManager;
 let keroseneVault;
 let dyadLpStakingFactory;
@@ -30,9 +32,13 @@ async function openContract(address, abiFilename) {
     .then(abi => new ethers.Contract(address, abi, provider));
 }
 
-async function initializeContracts() {
-  provider = new ethers.JsonRpcProvider(process.env.ALCHEMY_RPC_URL);
+async function initializeWallet() {
+  if (process.env.PRIVATE_KEY) {
+    wallet = new ethers.Wallet(process.env.PRIVATE_KEY, provider);
+  }
+}
 
+async function initializeContracts() {
   vaultManager = await readFile('abi/VaultManagerV5.json', 'utf8')
     .then(JSON.parse)
     .then(abi => new ethers.Contract(VAULT_MANAGER_ADDRESS, abi, provider));
@@ -183,7 +189,45 @@ async function checkNote(noteId) {
   });
 }
 
+async function liquidateNote(noteId, dyadAmount) {
+  const mintedDyad = await dyad.mintedDyad(noteId);
+  const dyadAmountBigInt = ethers.parseUnits(dyadAmount, 18);
+
+  if (dyadAmountBigInt > mintedDyad) {
+    console.error(`Cannot liquidate more than the minted amount. Note ${noteId} has ${ethers.formatUnits(mintedDyad, 18)} DYAD minted.`);
+    return;
+  }
+
+  const targetNoteId = process.env.NOTE_IDS.split(',')[0];
+
+  console.log(`Attempting to liquidate ${dyadAmount} DYAD from note ${noteId}`);
+  const cr = await vaultManager.collatRatio(noteId);
+  console.log(`Current collateral ratio: ${ethers.formatUnits(cr, 18)}`);
+
+  // make sure CR is below 1.5
+
+  if (!wallet) {
+    console.error('Wallet not initialized');
+    return;
+  }
+
+  const vaultManagerWriter = vaultManager.connect(wallet);
+
+  // mint DYAD
+  console.log(`minting ${dyadAmount} DYAD`);
+  await vaultManagerWriter
+    .mintDyad(targetNoteId, dyadAmountBigInt, wallet.address)
+    .then(tx => tx.wait());
+
+  // liquidate the note
+  console.log(`liquidating note ${noteId}`);
+  await vaultManagerWriter
+    .liquidate(noteId, targetNoteId, dyadAmountBigInt)
+    .then(tx => tx.wait());
+}
+
 async function main() {
+  await initializeWallet();
   await initializeContracts();
   await initializeDiscord();
 
@@ -207,20 +251,7 @@ async function main() {
     .description('Liquidate a note')
     .argument('<noteId>', 'Note ID to liquidate')
     .argument('<dyadAmount>', 'Amount of DYAD to liquidate')
-    .action(async (noteId, dyadAmount) => {
-      await initializeContracts();
-      const mintedDyad = await dyad.mintedDyad(noteId);
-      const dyadAmountBigInt = ethers.parseUnits(dyadAmount, 18);
-      
-      if (dyadAmountBigInt > mintedDyad) {
-        console.error(`Cannot liquidate more than the minted amount. Note ${noteId} has ${ethers.formatUnits(mintedDyad, 18)} DYAD minted.`);
-        return;
-      }
-
-      console.log(`Attempting to liquidate ${dyadAmount} DYAD from note ${noteId}`);
-      const cr = await vaultManager.collatRatio(noteId);
-      console.log(`Current collateral ratio: ${ethers.formatUnits(cr, 18)}`);
-    });
+    .action(liquidateNote);
 
   await program.parseAsync();
   
