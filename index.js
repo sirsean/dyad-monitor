@@ -236,7 +236,7 @@ async function listNotes() {
   const data = await response.json();
   const notes = data.data.notes.items
     .filter(note => BigInt(note.collatRatio) <= ethers.parseUnits('1.6', 18))
-    .sort((a, b) => BigInt(a.collatRatio) - BigInt(b.collatRatio))
+    .sort((a, b) => Number(ethers.formatUnits(a.collatRatio, 18)) - Number(ethers.formatUnits(b.collatRatio, 18)))
     .slice(0, 5);
 
   notes.forEach(note => {
