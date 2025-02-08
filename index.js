@@ -209,6 +209,44 @@ async function checkVault(asset) {
   console.log(`Balance in ${asset} vault for note ${noteId}: ${ethers.formatUnits(balance, 18)}`);
 }
 
+async function listNotes() {
+  const query = `{
+    notes(limit: 1000) {
+      items {
+        id
+        collatRatio
+        kerosene
+        dyad
+        xp
+        collateral
+        __typename
+      }
+      __typename
+    }
+  }`;
+
+  const response = await fetch('https://api.dyadstable.xyz/', {
+    method: 'POST',
+    headers: {
+      'Content-Type': 'application/json',
+    },
+    body: JSON.stringify({ query })
+  });
+
+  const data = await response.json();
+  const notes = data.data.notes.items.slice(0, 5);
+
+  notes.forEach(note => {
+    console.log(`\nNote ID: ${note.id}`);
+    console.log(`Collateral Ratio: ${formatNumber(note.collatRatio, 3)}`);
+    console.log(`Kerosene: ${formatNumber(note.kerosene, 2)}`);
+    console.log(`DYAD: ${formatNumber(note.dyad, 2)}`);
+    console.log(`XP: ${formatNumber(note.xp, 2)}`);
+    console.log(`Collateral: ${formatNumber(note.collateral, 2)}`);
+    console.log('---');
+  });
+}
+
 async function liquidateNote(noteId, dyadAmount) {
   const mintedDyad = await dyad.mintedDyad(noteId);
   const dyadAmountBigInt = ethers.parseUnits(dyadAmount, 18);
@@ -288,6 +326,10 @@ async function main() {
     .description('Check vault asset balance for a note')
     .argument('<asset>', 'Asset vault to check (kerosene/eth/usdc)')
     .action(checkVault);
+
+  program.command('list')
+    .description('List the first 5 notes from the DYAD API')
+    .action(listNotes);
 
   await program.parseAsync();
   
