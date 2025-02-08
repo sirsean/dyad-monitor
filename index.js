@@ -236,15 +236,12 @@ async function listNotes() {
   const data = await response.json();
   const notes = data.data.notes.items
     .filter(note => BigInt(note.collatRatio) <= ethers.parseUnits('1.6', 18))
-    .sort((a, b) => Number(ethers.formatUnits(a.collatRatio, 18)) - Number(ethers.formatUnits(b.collatRatio, 18)))
-    .slice(0, 5);
+    .sort((a, b) => Number(ethers.formatUnits(a.collatRatio, 18)) - Number(ethers.formatUnits(b.collatRatio, 18)));
 
   notes.forEach(note => {
-    console.log(`\nNote ID: ${note.id}`);
+    console.log(`Note ID: ${note.id}`);
     console.log(`Collateral Ratio: ${ethers.formatUnits(note.collatRatio, 18)}`);
-    console.log(`Kerosene: ${ethers.formatUnits(note.kerosene, 18)}`);
     console.log(`DYAD: ${ethers.formatUnits(note.dyad, 18)}`);
-    console.log(`XP: ${ethers.formatUnits(note.xp, 27)}`);
     console.log(`Collateral: ${ethers.formatUnits(note.collateral, 18)}`);
     console.log('---');
   });
