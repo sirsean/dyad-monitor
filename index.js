@@ -313,11 +313,11 @@ async function main() {
 
   program.command('check-vault')
     .description('Check vault asset balance for a note')
-    .argument('<asset>', 'Asset vault to check (kerosene/eth/usdc)')
+    .argument('<asset>', 'Asset vault to check (KEROSENE, WETH)')
     .action(checkVault);
 
   program.command('list')
-    .description('List the first 5 notes from the DYAD API')
+    .description('List notes that are close to liquidation')
     .action(listNotes);
 
   await program.parseAsync();
