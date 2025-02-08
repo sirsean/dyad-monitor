@@ -13,6 +13,12 @@ const LP_TOKENS = {
   '0x1507bf3F8712c496fA4679a4bA827F633979dBa4': 'DYAD/USDC',
 }
 
+const VAULT_ADDRESSES = {
+  'kerosene': KEROSENE_VAULT_ADDRESS,
+  'eth': '0x4808e4CC6a2Ba764778A0351E1Be198494aF0b43',
+  'usdc': '0x1507bf3F8712c496fA4679a4bA827F633979dBa4'
+}
+
 const LOWER_CR = 2.5;
 const TARGET_CR = 2.75;
 const UPPER_CR = 3.0;
@@ -189,6 +195,21 @@ async function checkNote(noteId) {
   });
 }
 
+async function checkVault(asset) {
+  await initializeContracts();
+  const noteId = process.env.NOTE_IDS.split(',')[0];
+  
+  const vaultAddress = VAULT_ADDRESSES[asset.toLowerCase()];
+  if (!vaultAddress) {
+    console.error(`Unknown asset: ${asset}. Available assets: ${Object.keys(VAULT_ADDRESSES).join(', ')}`);
+    return;
+  }
+
+  const vault = await openContract(vaultAddress, 'abi/Vault.json');
+  const balance = await vault.id2asset(noteId);
+  console.log(`Balance in ${asset} vault for note ${noteId}: ${ethers.formatUnits(balance, 18)}`);
+}
+
 async function liquidateNote(noteId, dyadAmount) {
   const mintedDyad = await dyad.mintedDyad(noteId);
   const dyadAmountBigInt = ethers.parseUnits(dyadAmount, 18);
@@ -263,6 +284,11 @@ async function main() {
     .argument('<noteId>', 'Note ID to liquidate')
     .argument('<dyadAmount>', 'Amount of DYAD to liquidate')
     .action(liquidateNote);
+
+  program.command('check-vault')
+    .description('Check vault asset balance for a note')
+    .argument('<asset>', 'Asset vault to check (kerosene/eth/usdc)')
+    .action(checkVault);
 
   await program.parseAsync();
   
