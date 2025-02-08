@@ -265,6 +265,24 @@ async function checkVault(asset) {
   console.log(`Balance in ${asset} vault for note ${noteId}: ${ethers.formatUnits(balance, 18)}`);
 }
 
+async function withdrawFromVault(asset, amount) {
+  if (!wallet) {
+    throw new Error('Wallet not initialized');
+  }
+
+  const vaultAddress = VAULT_ADDRESSES[asset];
+  if (!vaultAddress) {
+    throw new Error(`Unknown asset: ${asset}. Available assets: ${Object.keys(VAULT_ADDRESSES).join(', ')}`);
+  }
+
+  const noteId = process.env.NOTE_IDS.split(',')[0];
+  const parsedAmount = ethers.parseUnits(amount, 18);
+  
+  const vaultManagerWriter = vaultManager.connect(wallet);
+  await vaultManagerWriter.withdraw(noteId, vaultAddress, wallet.address, parsedAmount)
+    .then(tx => tx.wait());
+}
+
 async function listNotes() {
   const notes = await GraphNote.search();
   const filteredNotes = notes
@@ -360,6 +378,12 @@ async function main() {
   program.command('list')
     .description('List notes that are close to liquidation')
     .action(listNotes);
+
+  program.command('withdraw')
+    .description('Withdraw assets from a vault')
+    .argument('<asset>', 'Asset to withdraw (KEROSENE, WETH)')
+    .argument('<amount>', 'Amount to withdraw')
+    .action(withdrawFromVault);
 
   await program.parseAsync();
   
