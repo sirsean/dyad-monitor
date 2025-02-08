@@ -44,21 +44,10 @@ async function initializeWallet() {
 }
 
 async function initializeContracts() {
-  vaultManager = await readFile('abi/VaultManagerV5.json', 'utf8')
-    .then(JSON.parse)
-    .then(abi => new ethers.Contract(VAULT_MANAGER_ADDRESS, abi, provider));
-
-  keroseneVault = await readFile('abi/KeroseneVault.json', 'utf8')
-    .then(JSON.parse)
-    .then(abi => new ethers.Contract(KEROSENE_VAULT_ADDRESS, abi, provider));
-
-  dyadLpStakingFactory = await readFile('abi/DyadLPStakingFactory.json', 'utf8')
-    .then(JSON.parse)
-    .then(abi => new ethers.Contract(DYAD_LP_STAKING_FACTORY_ADDRESS, abi, provider));
-
-  dyad = await readFile('abi/Dyad.json', 'utf8')
-    .then(JSON.parse)
-    .then(abi => new ethers.Contract(DYAD_ADDRESS, abi, provider));
+  vaultManager = await openContract(VAULT_MANAGER_ADDRESS, 'abi/VaultManagerV5.json');
+  keroseneVault = await openContract(KEROSENE_VAULT_ADDRESS, 'abi/KeroseneVault.json');
+  dyadLpStakingFactory = await openContract(DYAD_LP_STAKING_FACTORY_ADDRESS, 'abi/DyadLPStakingFactory.json');
+  dyad = await openContract(DYAD_ADDRESS, 'abi/Dyad.json');
 }
 
 async function initializeDiscord() {
