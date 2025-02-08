@@ -14,9 +14,8 @@ const LP_TOKENS = {
 }
 
 const VAULT_ADDRESSES = {
-  'kerosene': KEROSENE_VAULT_ADDRESS,
-  'eth': '0x4808e4CC6a2Ba764778A0351E1Be198494aF0b43',
-  'usdc': '0x1507bf3F8712c496fA4679a4bA827F633979dBa4'
+  'KEROSENE': KEROSENE_VAULT_ADDRESS,
+  'WETH': '0x4fde0131694Ae08C549118c595923CE0b42f8299',
 }
 
 const LOWER_CR = 2.5;
@@ -199,7 +198,7 @@ async function checkVault(asset) {
   await initializeContracts();
   const noteId = process.env.NOTE_IDS.split(',')[0];
   
-  const vaultAddress = VAULT_ADDRESSES[asset.toLowerCase()];
+  const vaultAddress = VAULT_ADDRESSES[asset];
   if (!vaultAddress) {
     console.error(`Unknown asset: ${asset}. Available assets: ${Object.keys(VAULT_ADDRESSES).join(', ')}`);
     return;
