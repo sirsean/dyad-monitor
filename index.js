@@ -234,15 +234,17 @@ async function listNotes() {
   });
 
   const data = await response.json();
-  const notes = data.data.notes.items.slice(0, 5);
+  const notes = data.data.notes.items
+    .filter(note => BigInt(note.collatRatio) <= ethers.parseUnits('1.6', 18))
+    .slice(0, 5);
 
   notes.forEach(note => {
     console.log(`\nNote ID: ${note.id}`);
-    console.log(`Collateral Ratio: ${formatNumber(note.collatRatio, 3)}`);
-    console.log(`Kerosene: ${formatNumber(note.kerosene, 2)}`);
-    console.log(`DYAD: ${formatNumber(note.dyad, 2)}`);
-    console.log(`XP: ${formatNumber(note.xp, 2)}`);
-    console.log(`Collateral: ${formatNumber(note.collateral, 2)}`);
+    console.log(`Collateral Ratio: ${ethers.formatUnits(note.collatRatio, 18)}`);
+    console.log(`Kerosene: ${ethers.formatUnits(note.kerosene, 18)}`);
+    console.log(`DYAD: ${ethers.formatUnits(note.dyad, 18)}`);
+    console.log(`XP: ${ethers.formatUnits(note.xp, 27)}`);
+    console.log(`Collateral: ${ethers.formatUnits(note.collateral, 18)}`);
     console.log('---');
   });
 }
