@@ -277,9 +277,11 @@ async function withdrawFromVault(asset, amount) {
 
   const noteId = process.env.NOTE_IDS.split(',')[0];
   const parsedAmount = ethers.parseUnits(amount, 18);
+
+  console.log(`Withdrawing ${amount} ${asset} from note ${noteId}`);
   
   const vaultManagerWriter = vaultManager.connect(wallet);
-  await vaultManagerWriter.withdraw(noteId, vaultAddress, wallet.address, parsedAmount)
+  await vaultManagerWriter.withdraw(noteId, vaultAddress, parsedAmount, wallet.address)
     .then(tx => tx.wait());
 }
 
