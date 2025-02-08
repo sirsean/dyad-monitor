@@ -184,7 +184,6 @@ async function checkNote(noteId) {
 }
 
 async function checkVault(asset) {
-  await initializeContracts();
   const noteId = process.env.NOTE_IDS.split(',')[0];
   
   const vaultAddress = VAULT_ADDRESSES[asset];
@@ -251,8 +250,8 @@ async function listNotes() {
   const notes = await GraphNote.search();
   const filteredNotes = notes
     .filter(note => note.collatRatio <= ethers.parseUnits('1.6', 18))
-    .sort((a, b) => Number(ethers.formatUnits(a.collatRatio, 18)) - Number(ethers.formatUnits(b.collatRatio, 18)))
-    .slice(0, 5);
+    .filter(note => note.dyad >= ethers.parseUnits('100', 18))
+    .sort((a, b) => Number(ethers.formatUnits(a.collatRatio, 18)) - Number(ethers.formatUnits(b.collatRatio, 18)));
 
   filteredNotes.forEach(note => {
     console.log(note.toString());
