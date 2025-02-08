@@ -198,41 +198,64 @@ async function checkVault(asset) {
   console.log(`Balance in ${asset} vault for note ${noteId}: ${ethers.formatUnits(balance, 18)}`);
 }
 
-async function listNotes() {
-  const query = `{
-    notes(limit: 1000) {
-      items {
-        id
-        collatRatio
-        kerosene
-        dyad
-        xp
-        collateral
+class GraphNote {
+  constructor(data) {
+    this.id = data.id;
+    this.collatRatio = BigInt(data.collatRatio);
+    this.kerosene = BigInt(data.kerosene);
+    this.dyad = BigInt(data.dyad);
+    this.xp = BigInt(data.xp);
+    this.collateral = BigInt(data.collateral);
+  }
+
+  toString() {
+    return [
+      `Note ID: ${this.id}`,
+      `Collateral Ratio: ${ethers.formatUnits(this.collatRatio, 18)}`,
+      `DYAD: ${ethers.formatUnits(this.dyad, 18)}`,
+      `Collateral: ${ethers.formatUnits(this.collateral, 18)}`,
+      '---'
+    ].join('\n');
+  }
+
+  static async search() {
+    const query = `{
+      notes(limit: 1000) {
+        items {
+          id
+          collatRatio
+          kerosene
+          dyad
+          xp
+          collateral
+          __typename
+        }
         __typename
       }
-      __typename
-    }
-  }`;
+    }`;
 
-  const response = await fetch('https://api.dyadstable.xyz/', {
-    method: 'POST',
-    headers: {
-      'Content-Type': 'application/json',
-    },
-    body: JSON.stringify({ query })
-  });
+    const response = await fetch('https://api.dyadstable.xyz/', {
+      method: 'POST',
+      headers: {
+        'Content-Type': 'application/json',
+      },
+      body: JSON.stringify({ query })
+    });
 
-  const data = await response.json();
-  const notes = data.data.notes.items
-    .filter(note => BigInt(note.collatRatio) <= ethers.parseUnits('1.6', 18))
-    .sort((a, b) => Number(ethers.formatUnits(a.collatRatio, 18)) - Number(ethers.formatUnits(b.collatRatio, 18)));
+    const data = await response.json();
+    return data.data.notes.items.map(item => new GraphNote(item));
+  }
+}
 
-  notes.forEach(note => {
-    console.log(`Note ID: ${note.id}`);
-    console.log(`Collateral Ratio: ${ethers.formatUnits(note.collatRatio, 18)}`);
-    console.log(`DYAD: ${ethers.formatUnits(note.dyad, 18)}`);
-    console.log(`Collateral: ${ethers.formatUnits(note.collateral, 18)}`);
-    console.log('---');
+async function listNotes() {
+  const notes = await GraphNote.search();
+  const filteredNotes = notes
+    .filter(note => note.collatRatio <= ethers.parseUnits('1.6', 18))
+    .sort((a, b) => Number(ethers.formatUnits(a.collatRatio, 18)) - Number(ethers.formatUnits(b.collatRatio, 18)))
+    .slice(0, 5);
+
+  filteredNotes.forEach(note => {
+    console.log(note.toString());
   });
 }
 
