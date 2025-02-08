@@ -202,9 +202,14 @@ async function liquidateNote(noteId, dyadAmount) {
 
   console.log(`Attempting to liquidate ${dyadAmount} DYAD from note ${noteId}`);
   const cr = await vaultManager.collatRatio(noteId);
-  console.log(`Current collateral ratio: ${ethers.formatUnits(cr, 18)}`);
+  const crFloat = formatNumber(ethers.formatUnits(cr, 18), 3);
+  console.log(`Current collateral ratio: ${crFloat}`);
 
   // make sure CR is below 1.5
+  if (crFloat > 1.5) {
+    console.error(`Collateral ratio is too high to liquidate.`);
+    return;
+  }
 
   if (!wallet) {
     console.error('Wallet not initialized');
@@ -213,11 +218,17 @@ async function liquidateNote(noteId, dyadAmount) {
 
   const vaultManagerWriter = vaultManager.connect(wallet);
 
+  // determine how much DYAD to mint (if we already hold some, we don't need to mint it)
+  const dyadBalance = await dyad.balanceOf(wallet.address);
+  const dyadToMint = dyadAmountBigInt - dyadBalance;
+
   // mint DYAD
-  console.log(`minting ${dyadAmount} DYAD`);
-  await vaultManagerWriter
-    .mintDyad(targetNoteId, dyadAmountBigInt, wallet.address)
-    .then(tx => tx.wait());
+  if (dyadToMint > 0) {
+    console.log(`minting ${ethers.formatUnits(dyadToMint, 18)} DYAD`);
+    await vaultManagerWriter
+      .mintDyad(targetNoteId, dyadToMint, wallet.address)
+      .then(tx => tx.wait());
+  }
 
   // liquidate the note
   console.log(`liquidating note ${noteId}`);
