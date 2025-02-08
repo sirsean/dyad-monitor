@@ -155,48 +155,6 @@ async function noteMessages(noteId) {
   return messages.join('\n');
 }
 
-async function monitorCommand() {
-  const noteIds = process.env.NOTE_IDS.split(',');
-  const messages = [];
-  for (const noteId of noteIds) {
-    messages.push(await noteMessages(noteId));
-  }
-  await notify(messages.join('\n===\n'));
-}
-
-async function checkNote(noteId) {
-  const cr = await vaultManager.collatRatio(noteId);
-  const crFloat = formatNumber(ethers.formatUnits(cr, 18), 3);
-  console.log(`Collateral Ratio for Note ${noteId}: ${crFloat}`);
-
-  const mintedDyad = await dyad.mintedDyad(noteId);
-  console.log(`Minted DYAD: $${ethers.formatUnits(mintedDyad, 18)}`);
-  
-  const vaults = await vaultManager.getVaults(noteId);
-  vaults.forEach(async (vaultAddress) => {
-    const vault = await openContract(vaultAddress, 'abi/Vault.json');
-    const assetAddress = await vault.asset();
-    const asset = await openContract(assetAddress, 'abi/ERC20.json');
-    const symbol = await asset.symbol();
-    const usdValue = await vault.getUsdValue(noteId);
-    console.log(`${symbol}: $${formatNumber(ethers.formatUnits(usdValue, 18), 2)}`);
-  });
-}
-
-async function checkVault(asset) {
-  const noteId = process.env.NOTE_IDS.split(',')[0];
-  
-  const vaultAddress = VAULT_ADDRESSES[asset];
-  if (!vaultAddress) {
-    console.error(`Unknown asset: ${asset}. Available assets: ${Object.keys(VAULT_ADDRESSES).join(', ')}`);
-    return;
-  }
-
-  const vault = await openContract(vaultAddress, 'abi/Vault.json');
-  const balance = await vault.id2asset(noteId);
-  console.log(`Balance in ${asset} vault for note ${noteId}: ${ethers.formatUnits(balance, 18)}`);
-}
-
 class GraphNote {
   constructor(data) {
     this.id = data.id;
@@ -244,6 +202,67 @@ class GraphNote {
     const data = await response.json();
     return data.data.notes.items.map(item => new GraphNote(item));
   }
+}
+
+async function monitorCommand() {
+  const noteIds = process.env.NOTE_IDS.split(',');
+  const messages = [];
+  for (const noteId of noteIds) {
+    messages.push(await noteMessages(noteId));
+  }
+  const liquidations = await GraphNote.search()
+    .then(notes => notes.filter(note => note.collatRatio < ethers.parseUnits('1.5', 18)))
+    .then(notes => notes.filter(note => note.dyad >= ethers.parseUnits('100', 18)));
+  if (liquidations.length > 0) {
+    messages.push('Liquidations:');
+    for (const note of liquidations) {
+      const liquidationMessages = [note.toString()];
+      const vaults = await vaultManager.getVaults(note.id);
+      for (const vaultAddress of vaults) {
+        const vault = await openContract(vaultAddress, 'abi/Vault.json');
+        const assetAddress = await vault.asset();
+        const asset = await openContract(assetAddress, 'abi/ERC20.json');
+        const symbol = await asset.symbol();
+        const usdValue = await vault.getUsdValue(note.id);
+        liquidationMessages.push(`  ${symbol}: ${ethers.formatUnits(usdValue, 18)}`);
+      }
+      messages.push(liquidationMessages.join('\n'));
+    }
+  }
+  await notify(messages.join('\n===\n'));
+}
+
+async function checkNote(noteId) {
+  const cr = await vaultManager.collatRatio(noteId);
+  const crFloat = formatNumber(ethers.formatUnits(cr, 18), 3);
+  console.log(`Collateral Ratio for Note ${noteId}: ${crFloat}`);
+
+  const mintedDyad = await dyad.mintedDyad(noteId);
+  console.log(`Minted DYAD: $${ethers.formatUnits(mintedDyad, 18)}`);
+  
+  const vaults = await vaultManager.getVaults(noteId);
+  vaults.forEach(async (vaultAddress) => {
+    const vault = await openContract(vaultAddress, 'abi/Vault.json');
+    const assetAddress = await vault.asset();
+    const asset = await openContract(assetAddress, 'abi/ERC20.json');
+    const symbol = await asset.symbol();
+    const usdValue = await vault.getUsdValue(noteId);
+    console.log(`${symbol}: $${formatNumber(ethers.formatUnits(usdValue, 18), 2)}`);
+  });
+}
+
+async function checkVault(asset) {
+  const noteId = process.env.NOTE_IDS.split(',')[0];
+  
+  const vaultAddress = VAULT_ADDRESSES[asset];
+  if (!vaultAddress) {
+    console.error(`Unknown asset: ${asset}. Available assets: ${Object.keys(VAULT_ADDRESSES).join(', ')}`);
+    return;
+  }
+
+  const vault = await openContract(vaultAddress, 'abi/Vault.json');
+  const balance = await vault.id2asset(noteId);
+  console.log(`Balance in ${asset} vault for note ${noteId}: ${ethers.formatUnits(balance, 18)}`);
 }
 
 async function listNotes() {
