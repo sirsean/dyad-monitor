@@ -116,7 +116,9 @@ async function noteMessages(noteId) {
   const claimed = await dyadLpStakingFactory.noteIdToTotalClaimed(noteId);
   const r = await fetchRewards(noteId);
   const claimable = BigInt(r.amount) - claimed;
-  messages.push(`Claimable: ${formatNumber(ethers.formatUnits(claimable, 18))} KERO ($${formatNumber(parseFloat(claimable) * 10 ** -18 * mp, 2)})`);
+  const claimableMp = parseFloat(claimable) * 10 ** -18 * mp;
+  const claimableDv = parseFloat(claimable) * 10 ** -18 * dv;
+  messages.push(`Claimable: ${formatNumber(ethers.formatUnits(claimable, 18))} KERO ($${formatNumber(claimableMp, 2)}/$${formatNumber(claimableDv, 2)})`);
   
   for (const key in y) {
     const vault = y[key];
@@ -126,7 +128,7 @@ async function noteMessages(noteId) {
       messages.push(`Liquidity: ${formatNumber(vault.noteLiquidity)}`);
 
       const keroPerWeek = parseFloat(vault.kerosenePerYear) / 52;
-      messages.push(`KERO/week: ${formatNumber(keroPerWeek)} ($${formatNumber(keroPerWeek * mp, 2)})`);
+      messages.push(`KERO/week: ${formatNumber(keroPerWeek)} ($${formatNumber(keroPerWeek * mp, 2)}/$${formatNumber(keroPerWeek * dv, 2)})`);
 
       const mpApr = parseFloat(vault.kerosenePerYear) * mp / parseFloat(vault.noteLiquidity);
       messages.push(`MP-APR: ${formatNumber(mpApr * 100, 2)}%`);
