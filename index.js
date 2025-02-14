@@ -268,6 +268,28 @@ async function checkVault(asset) {
   console.log(`Balance in ${asset} vault for note ${noteId}: ${ethers.formatUnits(balance, 18)}`);
 }
 
+async function claimCommand() {
+  if (!wallet) {
+    throw new Error('Wallet not initialized');
+  }
+
+  const noteId = process.env.NOTE_IDS.split(',')[0];
+  const rewards = await fetchRewards(noteId);
+  
+  const amount = rewards.amount;
+  const proof = rewards.proof;
+
+  // Estimate gas for the claim
+  const dyadLpStakingFactoryWriter = dyadLpStakingFactory.connect(wallet);
+  const gasEstimate = await dyadLpStakingFactoryWriter.claimToVault.estimateGas(
+    noteId,
+    amount,
+    proof
+  );
+  
+  console.log(`Estimated gas: ${gasEstimate.toString()}`);
+}
+
 async function withdrawFromVault(asset, amount) {
   if (!wallet) {
     throw new Error('Wallet not initialized');
@@ -389,6 +411,10 @@ async function main() {
     .argument('<asset>', 'Asset to withdraw (KEROSENE, WETH)')
     .argument('<amount>', 'Amount to withdraw')
     .action(withdrawFromVault);
+
+  program.command('claim')
+    .description('Claim rewards to vault')
+    .action(claimCommand);
 
   await program.parseAsync();
   
