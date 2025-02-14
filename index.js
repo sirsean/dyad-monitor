@@ -71,9 +71,10 @@ async function notify(message) {
 }
 
 async function fetchKeroPrice() {
-  return fetch(`https://api.dexscreener.com/latest/dex/search?q=KEROSENE%20WETH`)
+  const keroPriceKey = 'coingecko:kerosene';
+  return fetch(`https://coins.llama.fi/prices/current/${keroPriceKey}?searchWidth=4h`)
     .then(res => res.json())
-    .then(data => parseFloat(data.pairs[0].priceUsd))
+    .then(data => data.coins[keroPriceKey].price)
     .catch(err => {
       console.error(err);
       return 0;
