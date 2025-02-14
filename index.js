@@ -309,7 +309,11 @@ async function claimCommand() {
     proof
   );
   
-  console.log(`Estimated gas: ${gasEstimate.toString()}`);
+  const ethPrice = await fetchEthPrice();
+  const gasInEth = gasEstimate * parseFloat(await provider.getFeeData().then(d => d.gasPrice)) * 10**-18;
+  const gasInUsd = gasInEth * ethPrice;
+  
+  console.log(`Estimated gas: ${gasEstimate.toString()} (${gasInEth.toFixed(6)} ETH / $${gasInUsd.toFixed(2)})`);
 }
 
 async function withdrawFromVault(asset, amount) {
