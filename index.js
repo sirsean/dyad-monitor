@@ -81,6 +81,17 @@ async function fetchKeroPrice() {
     });
 }
 
+async function fetchEthPrice() {
+  const ethPriceKey = 'coingecko:ethereum';
+  return fetch(`https://coins.llama.fi/prices/current/${ethPriceKey}?searchWidth=4h`)
+    .then(res => res.json())
+    .then(data => data.coins[ethPriceKey].price)
+    .catch(err => {
+      console.error(err);
+      return 0;
+    });
+}
+
 async function fetchRewards(noteId) {
   return fetch(`https://api.dyadstable.xyz/api/rewards/${noteId}`)
     .then(response => response.json());
@@ -275,9 +286,20 @@ async function claimCommand() {
 
   const noteId = process.env.NOTE_IDS.split(',')[0];
   const rewards = await fetchRewards(noteId);
+  const claimed = await dyadLpStakingFactory.noteIdToTotalClaimed(noteId);
   
   const amount = rewards.amount;
   const proof = rewards.proof;
+
+  const claimable = BigInt(amount) - claimed;
+  console.log(`Claimable: ${formatNumber(ethers.formatUnits(claimable, 18))} KERO`);
+
+  const mp = await fetchKeroPrice();
+  const claimableMp = parseFloat(claimable) * 10 ** -18 * mp;
+  console.log(`Claimable $${claimableMp}`);
+
+  const ethPrice = await fetchEthPrice();
+  console.log(`ETH price: $${formatNumber(ethPrice, 2)}`);
 
   // Estimate gas for the claim
   const dyadLpStakingFactoryWriter = dyadLpStakingFactory.connect(wallet);
