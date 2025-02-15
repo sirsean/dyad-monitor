@@ -70,26 +70,28 @@ async function notify(message) {
   }
 }
 
-async function fetchKeroPrice() {
-  const keroPriceKey = 'coingecko:kerosene';
-  return fetch(`https://coins.llama.fi/prices/current/${keroPriceKey}?searchWidth=4h`)
-    .then(res => res.json())
-    .then(data => data.coins[keroPriceKey].price)
-    .catch(err => {
-      console.error(err);
-      return 0;
-    });
-}
+class Pricer {
+  constructor() {
+    this.tokenKeys = {
+      'ETH': 'coingecko:ethereum',
+      'DYAD': 'coingecko:dyad',
+      'KEROSENE': 'coingecko:kerosene',
+    };
+  }
 
-async function fetchEthPrice() {
-  const ethPriceKey = 'coingecko:ethereum';
-  return fetch(`https://coins.llama.fi/prices/current/${ethPriceKey}?searchWidth=4h`)
-    .then(res => res.json())
-    .then(data => data.coins[ethPriceKey].price)
-    .catch(err => {
-      console.error(err);
-      return 0;
-    });
+  /**
+   * Get the price of a token in USD, from the DefiLlama API.
+   */
+  async getPrice(token) {
+    const key = this.tokenKeys[token];
+    return fetch(`https://coins.llama.fi/prices/current/${key}?searchWidth=4h`)
+      .then(res => res.json())
+      .then(data => data.coins[key].price)
+      .catch(err => {
+        console.error(err);
+        return 0;
+      });
+  }
 }
 
 async function fetchRewards(noteId) {
@@ -113,6 +115,8 @@ async function estimateClaim() {
     throw new Error('Wallet not initialized');
   }
 
+  const pricer = new Pricer();
+
   const noteId = process.env.NOTE_IDS.split(',')[0];
   const rewards = await fetchRewards(noteId);
   const claimed = await dyadLpStakingFactory.noteIdToTotalClaimed(noteId);
@@ -121,9 +125,9 @@ async function estimateClaim() {
   const proof = rewards.proof;
 
   const claimable = BigInt(amount) - claimed;
-  const mp = await fetchKeroPrice();
+  const mp = await pricer.getPrice('KEROSENE');
   const claimableMp = parseFloat(claimable) * 10 ** -18 * mp;
-  const ethPrice = await fetchEthPrice();
+  const ethPrice = await pricer.getPrice('ETH');
 
   // Estimate gas for the claim
   if (claimable == 0) {
@@ -168,7 +172,9 @@ async function claim() {
 async function noteMessages(noteId) {
   const messages = [];
 
-  const mp = await fetchKeroPrice();
+  const pricer = new Pricer();
+
+  const mp = await pricer.getPrice('KEROSENE');
   const dv = await keroseneVault.assetPrice().then(r => parseFloat(r) * 10 ** -8);
 
   messages.push(`Note: ${noteId}`);
