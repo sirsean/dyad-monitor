@@ -350,6 +350,22 @@ async function checkNote(noteId) {
   });
 }
 
+async function checkRiskCommand(noteId) {
+  const { cr, dyadToMint, dyadToBurn } = await lookupRisk(noteId);
+  const crFloat = formatNumber(ethers.formatUnits(cr, 18), 3);
+  
+  console.log(`Note ${noteId}:`);
+  console.log(`Collateral Ratio: ${crFloat}`);
+  
+  if (dyadToBurn) {
+    console.log(`Recommendation: Burn ${formatNumber(dyadToBurn, 0)} DYAD`);
+  } else if (dyadToMint) {
+    console.log(`Recommendation: Mint ${formatNumber(dyadToMint, 0)} DYAD`);
+  } else {
+    console.log('Recommendation: No action needed');
+  }
+}
+
 async function checkVault(asset) {
   const noteId = process.env.NOTE_IDS.split(',')[0];
   
@@ -503,6 +519,11 @@ async function main() {
   program.command('claim')
     .description('Claim rewards to vault')
     .action(claimCommand);
+
+  program.command('check-risk')
+    .description('Check risk metrics for a note')
+    .argument('<noteId>', 'Note ID to check')
+    .action(checkRiskCommand);
 
   await program.parseAsync();
   
