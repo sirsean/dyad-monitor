@@ -177,18 +177,14 @@ async function lookupRisk(noteId) {
   const mintedDyad = await dyad.mintedDyad(noteId);
   const targetDebt = parseFloat(ethers.formatUnits(totalValue, 18)) / TARGET_CR;
 
-  let dyadToMint = null;
-  let dyadToBurn = null;
-
-  if (crFloat < LOWER_CR) {
-    dyadToBurn = parseFloat(ethers.formatUnits(mintedDyad, 18)) - targetDebt;
-  } else if (crFloat > UPPER_CR) {
-    dyadToMint = targetDebt - parseFloat(ethers.formatUnits(mintedDyad, 18));
-  }
+  const dyadToBurn = parseFloat(ethers.formatUnits(mintedDyad, 18)) - targetDebt;
+  const dyadToMint = targetDebt - parseFloat(ethers.formatUnits(mintedDyad, 18));
 
   return {
     cr,
+    shouldMint: crFloat < LOWER_CR,
     dyadToMint,
+    shouldBurn: crFloat > UPPER_CR,
     dyadToBurn,
   }
 }
@@ -203,7 +199,7 @@ async function noteMessages(noteId) {
 
   messages.push(`Note: ${noteId}`);
 
-  const { cr, dyadToMint, dyadToBurn } = await lookupRisk(noteId);
+  const { cr, shouldMint, dyadToMint, shouldBurn, dyadToBurn } = await lookupRisk(noteId);
   const crFloat = formatNumber(ethers.formatUnits(cr, 18), 3);
   messages.push(`CR: ${crFloat}`);
 
@@ -243,10 +239,10 @@ async function noteMessages(noteId) {
     }
   }
 
-  if (dyadToBurn) {
+  if (shouldBurn) {
     messages.push('---');
     messages.push(`Recommendation: Burn ${formatNumber(dyadToBurn, 0)} DYAD`);
-  } else if (dyadToMint) {
+  } else if (shouldMint) {
     messages.push('---');
     messages.push(`Recommendation: Mint ${formatNumber(dyadToMint, 0)} DYAD`);
   }
@@ -351,15 +347,22 @@ async function checkNote(noteId) {
 }
 
 async function checkRiskCommand(noteId) {
-  const { cr, dyadToMint, dyadToBurn } = await lookupRisk(noteId);
+  const { cr, shouldMint, dyadToMint, shouldBurn, dyadToBurn } = await lookupRisk(noteId);
   const crFloat = formatNumber(ethers.formatUnits(cr, 18), 3);
   
-  console.log(`Note ${noteId}:`);
+  console.log(`Note: ${noteId}`);
   console.log(`Collateral Ratio: ${crFloat}`);
+
+  if (dyadToMint > 0) {
+    console.log(`Mint to target: ${dyadToMint}`);
+  }
+  if (dyadToBurn > 0) {
+    console.log(`Burn to target: ${dyadToBurn}`);
+  }
   
-  if (dyadToBurn) {
+  if (shouldBurn) {
     console.log(`Recommendation: Burn ${formatNumber(dyadToBurn, 0)} DYAD`);
-  } else if (dyadToMint) {
+  } else if (shouldMint) {
     console.log(`Recommendation: Mint ${formatNumber(dyadToMint, 0)} DYAD`);
   } else {
     console.log('Recommendation: No action needed');
