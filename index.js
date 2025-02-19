@@ -169,6 +169,30 @@ async function claim() {
     .then(tx => tx.wait());
 }
 
+async function lookupRisk(noteId) {
+  const cr = await vaultManager.collatRatio(noteId);
+  const crFloat = formatNumber(ethers.formatUnits(cr, 18), 3);
+
+  const totalValue = await vaultManager.getTotalValue(noteId);
+  const mintedDyad = await dyad.mintedDyad(noteId);
+  const targetDebt = parseFloat(ethers.formatUnits(totalValue, 18)) / TARGET_CR;
+
+  let dyadToMint = null;
+  let dyadToBurn = null;
+
+  if (crFloat < LOWER_CR) {
+    dyadToBurn = parseFloat(ethers.formatUnits(mintedDyad, 18)) - targetDebt;
+  } else if (crFloat > UPPER_CR) {
+    dyadToMint = targetDebt - parseFloat(ethers.formatUnits(mintedDyad, 18));
+  }
+
+  return {
+    cr,
+    dyadToMint,
+    dyadToBurn,
+  }
+}
+
 async function noteMessages(noteId) {
   const messages = [];
 
@@ -179,7 +203,7 @@ async function noteMessages(noteId) {
 
   messages.push(`Note: ${noteId}`);
 
-  const cr = await vaultManager.collatRatio(noteId);
+  const { cr, dyadToMint, dyadToBurn } = await lookupRisk(noteId);
   const crFloat = formatNumber(ethers.formatUnits(cr, 18), 3);
   messages.push(`CR: ${crFloat}`);
 
@@ -191,11 +215,14 @@ async function noteMessages(noteId) {
   const { claimable, claimableMp, percentage, gas, usdGasCost } = await estimateClaim();
 
   const claimableDv = parseFloat(claimable) * 10 ** -18 * dv;
-  messages.push(`Claimable: ${formatNumber(ethers.formatUnits(claimable, 18))} KERO ($${formatNumber(claimableMp, 2)}/$${formatNumber(claimableDv, 2)})`);
 
-  if (claimable > 0 && percentage < 0.01) {
-    messages.push(`Claiming ${formatNumber(ethers.formatUnits(claimable, 18))} KERO ($${formatNumber(claimableMp, 2)}) for ${ethers.formatEther(gas)} ETH ($${formatNumber(usdGasCost, 2)})`);
-    await claim();
+  if (claimable > 0) {
+    if (percentage < 0.01) {
+      messages.push(`Claiming ${formatNumber(ethers.formatUnits(claimable, 18))} KERO ($${formatNumber(claimableMp, 2)}/$${formatNumber(claimableDv, 2)}) for ${ethers.formatEther(gas)} ETH ($${formatNumber(usdGasCost, 2)})`);
+      await claim();
+    } else {
+      messages.push(`Claimable: ${formatNumber(ethers.formatUnits(claimable, 18))} KERO ($${formatNumber(claimableMp, 2)}/$${formatNumber(claimableDv, 2)}), not worth ${ethers.formatEther(gas)} ETH ($${formatNumber(usdGasCost, 2)}) gas`);
+    }
   }
   
   for (const key in y) {
@@ -216,18 +243,10 @@ async function noteMessages(noteId) {
     }
   }
 
-  if (crFloat < LOWER_CR) {
-    const totalValue = await vaultManager.getTotalValue(noteId);
-    const mintedDyad = await dyad.mintedDyad(noteId);
-    const targetDebt = parseFloat(ethers.formatUnits(totalValue, 18)) / TARGET_CR;
-    const dyadToBurn = parseFloat(ethers.formatUnits(mintedDyad, 18)) - targetDebt;
+  if (dyadToBurn) {
     messages.push('---');
     messages.push(`Recommendation: Burn ${formatNumber(dyadToBurn, 0)} DYAD`);
-  } else if (crFloat > UPPER_CR) {
-    const totalValue = await vaultManager.getTotalValue(noteId);
-    const mintedDyad = await dyad.mintedDyad(noteId);
-    const targetDebt = parseFloat(ethers.formatUnits(totalValue, 18)) / TARGET_CR;
-    const dyadToMint = targetDebt - parseFloat(ethers.formatUnits(mintedDyad, 18));
+  } else if (dyadToMint) {
     messages.push('---');
     messages.push(`Recommendation: Mint ${formatNumber(dyadToMint, 0)} DYAD`);
   }
