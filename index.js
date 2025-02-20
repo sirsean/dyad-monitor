@@ -303,7 +303,12 @@ async function monitorCommand() {
   const noteIds = process.env.NOTE_IDS.split(',');
   const messages = [];
   for (const noteId of noteIds) {
-    messages.push(await noteMessages(noteId));
+    await noteMessages(noteId)
+      .then(message => messages.push(message))
+      .catch(err => {
+        console.error(err);
+        messages.push(`Failed to fetch note ${noteId}: ${err}`);
+      });
   }
   const liquidations = await GraphNote.search()
     .then(notes => notes.filter(note => note.collatRatio < ethers.parseUnits('1.5', 18)))
