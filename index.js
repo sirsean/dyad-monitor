@@ -112,12 +112,12 @@ function formatNumber(numberString, decimalPlaces = 0) {
 
 async function estimateClaim() {
   if (!wallet) {
-    throw new Error('Wallet not initialized');
+    throw new Error("Wallet not initialized");
   }
 
   const pricer = new Pricer();
 
-  const noteId = process.env.NOTE_IDS.split(',')[0];
+  const noteId = process.env.NOTE_IDS.split(",")[0];
   const rewards = await fetchRewards(noteId);
   const claimed = await dyadLpStakingFactory.noteIdToTotalClaimed(noteId);
 
@@ -125,9 +125,9 @@ async function estimateClaim() {
   const proof = rewards.proof;
 
   const claimable = BigInt(amount) - claimed;
-  const mp = await pricer.getPrice('KEROSENE');
+  const mp = await pricer.getPrice("KEROSENE");
   const claimableMp = parseFloat(claimable) * 10 ** -18 * mp;
-  const ethPrice = await pricer.getPrice('ETH');
+  const ethPrice = await pricer.getPrice("ETH");
 
   // Estimate gas for the claim
   if (claimable == 0) {
@@ -137,19 +137,32 @@ async function estimateClaim() {
     };
   } else {
     const dyadLpStakingFactoryWriter = dyadLpStakingFactory.connect(wallet);
-    const gasEstimate = await dyadLpStakingFactoryWriter.claimToVault.estimateGas(noteId, amount, proof);
-    const gasPrice = await provider.getFeeData().then(d => d.gasPrice);
-    const gas = gasEstimate * gasPrice;
-    const usdGasCost = parseFloat(gas) * 10 ** -18 * ethPrice;
-    const percentage = usdGasCost / claimableMp;
-  
-    return {
-      claimable,
-      claimableMp,
-      gas,
-      usdGasCost,
-      percentage,
-    };
+    try {
+      const gasEstimate =
+        await dyadLpStakingFactoryWriter.claimToVault.estimateGas(
+          noteId,
+          amount,
+          proof,
+        );
+      const gasPrice = await provider.getFeeData().then((d) => d.gasPrice);
+      const gas = gasEstimate * gasPrice;
+      const usdGasCost = parseFloat(gas) * 10 ** -18 * ethPrice;
+      const percentage = usdGasCost / claimableMp;
+
+      return {
+        claimable,
+        claimableMp,
+        gas,
+        usdGasCost,
+        percentage,
+      };
+    } catch (err) {
+      console.error(err);
+      return {
+        claimable,
+        claimableMp,
+      };
+    }
   }
 }
 
@@ -182,9 +195,9 @@ async function lookupRisk(noteId) {
 
   return {
     cr,
-    shouldMint: crFloat < LOWER_CR,
+    shouldMint: crFloat > UPPER_CR,
     dyadToMint,
-    shouldBurn: crFloat > UPPER_CR,
+    shouldBurn: crFloat < LOWER_CR,
     dyadToBurn,
   }
 }
@@ -205,7 +218,7 @@ async function noteMessages(noteId) {
 
   const y = await fetchYield(noteId);
   
-  const noteXp = y[Object.keys(y)[0]].noteXp;
+  const noteXp = y[Object.keys(y)[0]]?.noteXp;
   messages.push(`XP: ${formatNumber(noteXp, 2)}`);
 
   const { claimable, claimableMp, percentage, gas, usdGasCost } = await estimateClaim();
@@ -216,8 +229,10 @@ async function noteMessages(noteId) {
     if (percentage < 0.01) {
       messages.push(`Claiming ${formatNumber(ethers.formatUnits(claimable, 18))} KERO ($${formatNumber(claimableMp, 2)}/$${formatNumber(claimableDv, 2)}) for ${ethers.formatEther(gas)} ETH ($${formatNumber(usdGasCost, 2)})`);
       await claim();
-    } else {
+    } else if (gas) {
       messages.push(`Claimable: ${formatNumber(ethers.formatUnits(claimable, 18))} KERO ($${formatNumber(claimableMp, 2)}/$${formatNumber(claimableDv, 2)}), not worth ${ethers.formatEther(gas)} ETH ($${formatNumber(usdGasCost, 2)}) gas`);
+    } else {
+       messages.push(`Claimable: ${formatNumber(ethers.formatUnits(claimable, 18))} KERO ($${formatNumber(claimableMp, 2)}/$${formatNumber(claimableDv, 2)}), but gas cannot be estimated`);
     }
   }
   
