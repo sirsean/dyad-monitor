@@ -490,6 +490,16 @@ async function liquidateNote(noteId, dyadAmount) {
       .then(tx => tx.wait());
   }
 
+  // check and set approval for DYAD
+  const dyadWriter = dyad.connect(wallet);
+  const currentAllowance = await dyad.allowance(wallet.address, VAULT_MANAGER_ADDRESS);
+  if (currentAllowance < dyadAmountBigInt) {
+    console.log(`Approving DYAD transfer for ${ethers.formatUnits(dyadAmountBigInt, 18)} DYAD`);
+    await dyadWriter
+      .approve(VAULT_MANAGER_ADDRESS, dyadAmountBigInt)
+      .then(tx => tx.wait());
+  }
+
   // liquidate the note
   console.log(`liquidating note ${noteId}`);
   await vaultManagerWriter
