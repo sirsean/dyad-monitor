@@ -1,4 +1,3 @@
-
 import { Client, GatewayIntentBits } from 'discord.js';
 import { ethers } from 'ethers';
 import { readFile } from 'fs/promises';
@@ -217,7 +216,7 @@ async function noteMessages(noteId) {
   messages.push(`CR: ${crFloat}`);
 
   const y = await fetchYield(noteId);
-  
+
   const noteXp = y[Object.keys(y)[0]]?.noteXp;
   messages.push(`XP: ${formatNumber(noteXp, 2)}`);
 
@@ -235,7 +234,7 @@ async function noteMessages(noteId) {
        messages.push(`Claimable: ${formatNumber(ethers.formatUnits(claimable, 18))} KERO ($${formatNumber(claimableMp, 2)}/$${formatNumber(claimableDv, 2)}), but gas cannot be estimated`);
     }
   }
-  
+
   for (const key in y) {
     const vault = y[key];
     if (parseFloat(vault.noteLiquidity) > 0) {
@@ -354,7 +353,7 @@ async function checkNote(noteId) {
 
   const mintedDyad = await dyad.mintedDyad(noteId);
   console.log(`Minted DYAD: $${ethers.formatUnits(mintedDyad, 18)}`);
-  
+
   const vaults = await vaultManager.getVaults(noteId);
   vaults.forEach(async (vaultAddress) => {
     const vault = await openContract(vaultAddress, 'abi/Vault.json');
@@ -369,7 +368,7 @@ async function checkNote(noteId) {
 async function checkRiskCommand(noteId) {
   const { cr, shouldMint, dyadToMint, shouldBurn, dyadToBurn } = await lookupRisk(noteId);
   const crFloat = formatNumber(ethers.formatUnits(cr, 18), 3);
-  
+
   console.log(`Note: ${noteId}`);
   console.log(`Collateral Ratio: ${crFloat}`);
 
@@ -379,7 +378,7 @@ async function checkRiskCommand(noteId) {
   if (dyadToBurn > 0) {
     console.log(`Burn to target: ${dyadToBurn}`);
   }
-  
+
   if (shouldBurn) {
     console.log(`Recommendation: Burn ${formatNumber(dyadToBurn, 0)} DYAD`);
   } else if (shouldMint) {
@@ -392,60 +391,75 @@ async function checkRiskCommand(noteId) {
 async function watchCommand() {
   console.log('Watching for new blocks...');
   console.log('Press Ctrl+C to stop');
-  
+
   // Use WebSocket provider for real-time updates
   const wsProvider = new ethers.WebSocketProvider(process.env.ALCHEMY_WS_URL || process.env.ALCHEMY_RPC_URL.replace('https', 'wss'));
-  
+
   // Track the last time we fetched notes to avoid too many requests
   let lastNotesFetch = 0;
-  
+  // Track the last time we ran the full monitor command
+  let lastMonitorRun = 0;
+
   wsProvider.on('block', async (blockNumber) => {
     try {
       const block = await wsProvider.getBlock(blockNumber);
       const feeData = await wsProvider.getFeeData();
-      
+
       const timestamp = new Date(block.timestamp * 1000).toISOString();
       const gasPrice = ethers.formatUnits(feeData.gasPrice || 0, 'gwei');
-      
+
       console.log(`Block #${blockNumber} | Time: ${timestamp} | Gas: ${gasPrice} gwei`);
-      
-      // Check for liquidatable notes every ~1 minute
+
       const currentTime = Date.now();
+
+      // Run the full monitorCommand every 10 minutes
+      if (currentTime - lastMonitorRun > 10 * 60 * 1000) {
+        lastMonitorRun = currentTime;
+        console.log('Running scheduled monitor update...');
+        try {
+          await monitorCommand();
+          console.log('Monitor update completed.');
+        } catch (error) {
+          console.error('Error running monitor command:', error.message);
+        }
+      }
+
+      // Check for liquidatable notes every ~1 minute
       if (currentTime - lastNotesFetch > 60 * 1000) {
         lastNotesFetch = currentTime;
         console.log('Checking for liquidatable notes...');
-        
+
         try {
           const notes = await GraphNote.search();
           const liquidatableNotes = notes
             .filter(note => note.collatRatio < ethers.parseUnits('1.7', 18))
             .filter(note => note.dyad >= ethers.parseUnits('100', 18))
             .sort((a, b) => Number(a.collatRatio) - Number(b.collatRatio));
-          
+
           if (liquidatableNotes.length > 0) {
             console.log(`\n=== Found ${liquidatableNotes.length} potentially liquidatable notes ===`);
-            
+
             // Process each liquidatable note
             for (const note of liquidatableNotes) {
               try {
                 // Get vault values from the contract
                 const [exoValue, keroValue] = await vaultManager.getVaultsValues(note.id);
-                
+
                 // Get collateral ratio directly from vault manager contract
                 const actualCR = await vaultManager.collatRatio(note.id);
-                
+
                 // Format values for display
                 const crFormatted = ethers.formatUnits(actualCR, 18);
                 const dyadFormatted = ethers.formatUnits(note.dyad, 18);
                 const exoValueFormatted = ethers.formatUnits(exoValue, 18);
-                
+
                 // Print only the required information
                 console.log(`Note ID: ${note.id}`);
                 console.log(`CR: ${crFormatted}`);
                 console.log(`DYAD: ${dyadFormatted}`);
                 console.log(`Exo Value: ${exoValueFormatted} USD`);
                 console.log('---');
-                
+
                 // Check if note meets criteria for Discord notification:
                 // CR < 1.62 and exoValue > DYAD
                 if (parseFloat(crFormatted) < 1.62 && exoValue > note.dyad) {
@@ -454,9 +468,10 @@ async function watchCommand() {
                     `Note ID: ${note.id}`,
                     `CR: ${crFormatted}`,
                     `DYAD: ${dyadFormatted}`,
-                    `Exo: ${exoValueFormatted} USD`
+                    `Exo Value: ${exoValueFormatted} USD`,
+                    `Profit Potential: Exo Value > DYAD`
                   ].join('\n');
-                  
+
                   // Send notification to Discord
                   await notify(notificationMessage);
                 }
@@ -464,7 +479,7 @@ async function watchCommand() {
                 console.error(`Error getting values for note ${note.id}:`, error.message);
               }
             }
-            
+
             console.log('===\n');
           } else {
             console.log('No liquidatable notes found.');
@@ -477,10 +492,10 @@ async function watchCommand() {
       console.error(`Error processing block ${blockNumber}:`, error.message);
     }
   });
-  
+
   // Keep the process running
   process.stdin.resume();
-  
+
   // Handle cleanup on exit
   process.on('SIGINT', async () => {
     console.log('Stopping block watcher...');
@@ -491,7 +506,7 @@ async function watchCommand() {
 
 async function checkVault(asset) {
   const noteId = process.env.NOTE_IDS.split(',')[0];
-  
+
   const vaultAddress = VAULT_ADDRESSES[asset];
   if (!vaultAddress) {
     console.error(`Unknown asset: ${asset}. Available assets: ${Object.keys(VAULT_ADDRESSES).join(', ')}`);
@@ -531,7 +546,7 @@ async function withdrawFromVault(asset, amount) {
   const parsedAmount = ethers.parseUnits(amount, 18);
 
   console.log(`Withdrawing ${amount} ${asset} from note ${noteId}`);
-  
+
   const vaultManagerWriter = vaultManager.connect(wallet);
   await vaultManagerWriter.withdraw(noteId, vaultAddress, parsedAmount, wallet.address)
     .then(tx => tx.wait());
@@ -663,7 +678,7 @@ async function main() {
     .action(watchCommand);
 
   await program.parseAsync();
-  
+
   // Cleanup
   await discord.destroy();
 }
