@@ -412,15 +412,25 @@ async function watchCommand() {
 
       const currentTime = Date.now();
 
-      // Run the full monitorCommand every 10 minutes
+      // Check the first note from NOTE_IDS every 10 minutes
       if (currentTime - lastMonitorRun > 10 * 60 * 1000) {
         lastMonitorRun = currentTime;
-        console.log('Running scheduled monitor update...');
+        console.log('Running scheduled note check...');
         try {
-          await monitorCommand();
-          console.log('Monitor update completed.');
+          // Get the first note ID from the environment variable
+          const firstNoteId = process.env.NOTE_IDS.split(',')[0];
+          console.log(`Checking note ID: ${firstNoteId}`);
+          
+          // Call noteMessages for the first note
+          const message = await noteMessages(firstNoteId);
+          
+          // Send the result to Discord
+          await notify(message);
+          
+          console.log('Note check completed.');
         } catch (error) {
-          console.error('Error running monitor command:', error.message);
+          console.error('Error checking note:', error.message);
+          await notify(`Error checking note: ${error.message}`);
         }
       }
 
