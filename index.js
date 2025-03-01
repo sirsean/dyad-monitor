@@ -424,9 +424,24 @@ async function watchCommand() {
           
           if (liquidatableNotes.length > 0) {
             console.log(`\n=== Found ${liquidatableNotes.length} potentially liquidatable notes ===`);
-            liquidatableNotes.forEach(note => {
+            
+            // Process each liquidatable note
+            for (const note of liquidatableNotes) {
               console.log(note.toString());
-            });
+              
+              try {
+                // Get vault values from the contract
+                const [exoValue, keroValue] = await vaultManager.getVaultsValues(note.id);
+                
+                console.log(`Vault Values:`);
+                console.log(`- Exo Value: ${ethers.formatUnits(exoValue, 18)} USD`);
+                console.log(`- Kero Value: ${ethers.formatUnits(keroValue, 18)} USD`);
+                console.log('---');
+              } catch (error) {
+                console.error(`Error getting vault values for note ${note.id}:`, error.message);
+              }
+            }
+            
             console.log('===\n');
           } else {
             console.log('No liquidatable notes found.');
