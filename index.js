@@ -409,9 +409,9 @@ async function watchCommand() {
       
       console.log(`Block #${blockNumber} | Time: ${timestamp} | Gas: ${gasPrice} gwei`);
       
-      // Check for liquidatable notes every ~5 minutes (roughly 25 blocks)
+      // Check for liquidatable notes every ~1 minute
       const currentTime = Date.now();
-      if (currentTime - lastNotesFetch > 5 * 60 * 1000) {
+      if (currentTime - lastNotesFetch > 60 * 1000) {
         lastNotesFetch = currentTime;
         console.log('Checking for liquidatable notes...');
         
