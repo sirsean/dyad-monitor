@@ -389,6 +389,38 @@ async function checkRiskCommand(noteId) {
   }
 }
 
+async function watchCommand() {
+  console.log('Watching for new blocks...');
+  console.log('Press Ctrl+C to stop');
+  
+  // Use WebSocket provider for real-time updates
+  const wsProvider = new ethers.WebSocketProvider(process.env.ALCHEMY_WS_URL || process.env.ALCHEMY_RPC_URL.replace('https', 'wss'));
+  
+  wsProvider.on('block', async (blockNumber) => {
+    try {
+      const block = await wsProvider.getBlock(blockNumber);
+      const feeData = await wsProvider.getFeeData();
+      
+      const timestamp = new Date(block.timestamp * 1000).toISOString();
+      const gasPrice = ethers.formatUnits(feeData.gasPrice || 0, 'gwei');
+      
+      console.log(`Block #${blockNumber} | Time: ${timestamp} | Gas: ${gasPrice} gwei`);
+    } catch (error) {
+      console.error(`Error processing block ${blockNumber}:`, error.message);
+    }
+  });
+  
+  // Keep the process running
+  process.stdin.resume();
+  
+  // Handle cleanup on exit
+  process.on('SIGINT', async () => {
+    console.log('Stopping block watcher...');
+    await wsProvider.destroy();
+    process.exit(0);
+  });
+}
+
 async function checkVault(asset) {
   const noteId = process.env.NOTE_IDS.split(',')[0];
   
@@ -557,6 +589,10 @@ async function main() {
     .description('Check risk metrics for a note')
     .argument('<noteId>', 'Note ID to check')
     .action(checkRiskCommand);
+
+  program.command('watch')
+    .description('Watch for new blocks in real-time')
+    .action(watchCommand);
 
   await program.parseAsync();
   
