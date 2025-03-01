@@ -449,14 +449,15 @@ async function watchCommand() {
       // Convert to Central Time using date-fns-tz
       const timeZone = 'America/Chicago'; // Central Time
       
-      // Apply timezone offset to get CT time
+      // The issue is that getTimezoneOffset returns the offset between UTC and specified timezone in milliseconds
+      // But we need to ADD this offset to convert UTC to local time (not subtract it)
       const offsetMillis = getTimezoneOffset(timeZone, currentDate);
-      const dateCT = addMilliseconds(currentDate, -offsetMillis);
+      const dateCT = addMilliseconds(currentDate, offsetMillis);
       
-      // Get hours and minutes in CT
+      // Get hours and minutes in CT (24-hour format)
       const hoursCT = getHours(dateCT);
       const minutesCT = getMinutes(dateCT);
-      console.log(hoursCT, minutesCT);
+      console.log(`Hours: ${hoursCT} (24-hour format), Minutes: ${minutesCT}`);
       
       // Log the CT time for debugging
       const formattedCT = format(dateCT, 'yyyy-MM-dd HH:mm:ss zzz', { timeZone });
