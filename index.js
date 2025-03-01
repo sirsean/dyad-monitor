@@ -418,7 +418,7 @@ async function watchCommand() {
         try {
           const notes = await GraphNote.search();
           const liquidatableNotes = notes
-            .filter(note => note.collatRatio < ethers.parseUnits('1.6', 18))
+            .filter(note => note.collatRatio < ethers.parseUnits('1.7', 18))
             .filter(note => note.dyad >= ethers.parseUnits('100', 18))
             .sort((a, b) => Number(a.collatRatio) - Number(b.collatRatio));
           
