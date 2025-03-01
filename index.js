@@ -2,8 +2,8 @@ import { Client, GatewayIntentBits } from 'discord.js';
 import { ethers } from 'ethers';
 import { readFile } from 'fs/promises';
 import { Command } from 'commander';
-import { formatInTimeZone, utcToZonedTime } from 'date-fns-tz';
-import { getHours, getMinutes } from 'date-fns';
+import { format, zonedTimeToUtc, getTimezoneOffset } from 'date-fns-tz';
+import { getHours, getMinutes, addMilliseconds } from 'date-fns';
 
 const VAULT_MANAGER_ADDRESS = '0xB62bdb1A6AC97A9B70957DD35357311e8859f0d7';
 const KEROSENE_VAULT_ADDRESS = '0x4808e4CC6a2Ba764778A0351E1Be198494aF0b43';
@@ -448,14 +448,17 @@ async function watchCommand() {
 
       // Convert to Central Time using date-fns-tz
       const timeZone = 'America/Chicago'; // Central Time
-      const dateCT = utcToZonedTime(currentDate, timeZone);
+      
+      // Apply timezone offset to get CT time
+      const offsetMillis = getTimezoneOffset(timeZone, currentDate);
+      const dateCT = addMilliseconds(currentDate, -offsetMillis);
       
       // Get hours and minutes in CT
       const hoursCT = getHours(dateCT);
       const minutesCT = getMinutes(dateCT);
       
       // Log the CT time for debugging
-      const formattedCT = formatInTimeZone(currentDate, timeZone, 'yyyy-MM-dd HH:mm:ss zzz');
+      const formattedCT = format(dateCT, 'yyyy-MM-dd HH:mm:ss zzz', { timeZone });
       console.log(`Current time (CT): ${formattedCT}`);
 
       // The target time: 5:06 PM CT
