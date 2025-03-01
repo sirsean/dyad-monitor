@@ -2,7 +2,7 @@ import { Client, GatewayIntentBits } from 'discord.js';
 import { ethers } from 'ethers';
 import { readFile } from 'fs/promises';
 import { Command } from 'commander';
-import { format, zonedTimeToUtc, getTimezoneOffset } from 'date-fns-tz';
+import { format, getTimezoneOffset } from 'date-fns-tz';
 import { getHours, getMinutes, addMilliseconds } from 'date-fns';
 
 const VAULT_MANAGER_ADDRESS = '0xB62bdb1A6AC97A9B70957DD35357311e8859f0d7';
@@ -456,6 +456,7 @@ async function watchCommand() {
       // Get hours and minutes in CT
       const hoursCT = getHours(dateCT);
       const minutesCT = getMinutes(dateCT);
+      console.log(hoursCT, minutesCT);
       
       // Log the CT time for debugging
       const formattedCT = format(dateCT, 'yyyy-MM-dd HH:mm:ss zzz', { timeZone });
