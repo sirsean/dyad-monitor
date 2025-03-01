@@ -431,14 +431,17 @@ async function watchCommand() {
                 // Get vault values from the contract
                 const [exoValue, keroValue] = await vaultManager.getVaultsValues(note.id);
                 
+                // Get collateral ratio directly from vault manager contract
+                const actualCR = await vaultManager.collatRatio(note.id);
+                
                 // Print only the required information
                 console.log(`Note ID: ${note.id}`);
-                console.log(`CR: ${ethers.formatUnits(note.collatRatio, 18)}`);
+                console.log(`CR: ${ethers.formatUnits(actualCR, 18)}`);
                 console.log(`DYAD: ${ethers.formatUnits(note.dyad, 18)}`);
                 console.log(`Exo Value: ${ethers.formatUnits(exoValue, 18)} USD`);
                 console.log('---');
               } catch (error) {
-                console.error(`Error getting vault values for note ${note.id}:`, error.message);
+                console.error(`Error getting values for note ${note.id}:`, error.message);
               }
             }
             
