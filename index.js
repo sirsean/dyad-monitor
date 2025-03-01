@@ -454,8 +454,7 @@ async function watchCommand() {
                     `Note ID: ${note.id}`,
                     `CR: ${crFormatted}`,
                     `DYAD: ${dyadFormatted}`,
-                    `Exo Value: ${exoValueFormatted} USD`,
-                    `Profit Potential: Exo Value > DYAD`
+                    `Exo: ${exoValueFormatted} USD`
                   ].join('\n');
                   
                   // Send notification to Discord
