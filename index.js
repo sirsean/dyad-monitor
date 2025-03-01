@@ -2,6 +2,8 @@ import { Client, GatewayIntentBits } from 'discord.js';
 import { ethers } from 'ethers';
 import { readFile } from 'fs/promises';
 import { Command } from 'commander';
+import { formatInTimeZone, utcToZonedTime } from 'date-fns-tz';
+import { getHours, getMinutes } from 'date-fns';
 
 const VAULT_MANAGER_ADDRESS = '0xB62bdb1A6AC97A9B70957DD35357311e8859f0d7';
 const KEROSENE_VAULT_ADDRESS = '0x4808e4CC6a2Ba764778A0351E1Be198494aF0b43';
@@ -444,22 +446,25 @@ async function watchCommand() {
         lastDailyCheckDate = new Date(currentDate.toDateString());
       }
 
-      // Check if we need to run the daily check at 4:45 PM CT
-      const hours = currentDate.getHours();
-      const minutes = currentDate.getMinutes();
-
-      // Convert current time to CT (Central Time)
-      // Note: This is a simplified approach. For more accuracy, use a timezone library
-      const currentHourCT = (hours - 5) % 24; // Convert from UTC to CT (UTC-5 or UTC-6 depending on DST)
-      if (currentHourCT < 0) currentHourCT += 24; // Handle negative hours
+      // Convert to Central Time using date-fns-tz
+      const timeZone = 'America/Chicago'; // Central Time
+      const dateCT = utcToZonedTime(currentDate, timeZone);
+      
+      // Get hours and minutes in CT
+      const hoursCT = getHours(dateCT);
+      const minutesCT = getMinutes(dateCT);
+      
+      // Log the CT time for debugging
+      const formattedCT = formatInTimeZone(currentDate, timeZone, 'yyyy-MM-dd HH:mm:ss zzz');
+      console.log(`Current time (CT): ${formattedCT}`);
 
       // The target time: 5:06 PM CT
       const targetHourCT = 17; // 5 PM in 24-hour format
-      const targetMinute = 10;
+      const targetMinuteCT = 10;
 
       // Check if it's time to run the daily check (after 5:06 PM CT) and we haven't run it today
-      const isAfterTargetTime = (currentHourCT > targetHourCT || 
-                                (currentHourCT === targetHourCT && minutes >= targetMinute));
+      const isAfterTargetTime = (hoursCT > targetHourCT || 
+                                (hoursCT === targetHourCT && minutesCT >= targetMinuteCT));
 
       const today = new Date(currentDate.toDateString());
       const needsCheck = !lastDailyCheckDate || lastDailyCheckDate.getTime() < today.getTime();
