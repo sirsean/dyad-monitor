@@ -395,43 +395,75 @@ async function watchCommand() {
   // Use WebSocket provider for real-time updates
   const wsProvider = new ethers.WebSocketProvider(process.env.ALCHEMY_WS_URL || process.env.ALCHEMY_RPC_URL.replace('https', 'wss'));
 
-  // Track the last time we fetched notes to avoid too many requests
-  let lastNotesFetch = 0;
-  // Track the last time we ran the full monitor command
-  let lastMonitorRun = 0;
+  // Track the date of the last daily check
+  let lastDailyCheckDate = null;
+  // Whether we've done the initial check on startup
+  let initialCheckDone = false;
 
   wsProvider.on('block', async (blockNumber) => {
     try {
       const block = await wsProvider.getBlock(blockNumber);
       const feeData = await wsProvider.getFeeData();
 
-      const timestamp = new Date(block.timestamp * 1000).toISOString();
+      const blockTimestamp = block.timestamp * 1000; // Convert to milliseconds
+      const currentDate = new Date(blockTimestamp);
+      const timestamp = currentDate.toISOString();
       const gasPrice = ethers.formatUnits(feeData.gasPrice || 0, 'gwei');
 
       console.log(`Block #${blockNumber} | Time: ${timestamp} | Gas: ${gasPrice} gwei`);
 
-      const currentTime = Date.now();
-
-      // Check the first note from NOTE_IDS every 10 minutes
-      if (currentTime - lastMonitorRun > 10 * 60 * 1000) {
-        lastMonitorRun = currentTime;
-        console.log('Running scheduled note check...');
+      // Function to run the daily note check
+      const runDailyNoteCheck = async () => {
+        console.log('Running daily note check...');
         try {
           // Get the first note ID from the environment variable
           const firstNoteId = process.env.NOTE_IDS.split(',')[0];
           console.log(`Checking note ID: ${firstNoteId}`);
-          
+
           // Call noteMessages for the first note
           const message = await noteMessages(firstNoteId);
-          
+
           // Send the result to Discord
           await notify(message);
-          
-          console.log('Note check completed.');
+
+          console.log('Daily note check completed.');
+          // Update the last check date
+          lastDailyCheckDate = new Date(currentDate.toDateString());
         } catch (error) {
           console.error('Error checking note:', error.message);
           await notify(`Error checking note: ${error.message}`);
         }
+      };
+
+      // Run initial check on startup
+      if (!initialCheckDone) {
+        initialCheckDone = true;
+        await runDailyNoteCheck();
+        lastDailyCheckDate = new Date(currentDate.toDateString());
+      }
+
+      // Check if we need to run the daily check at 4:45 PM CT
+      const hours = currentDate.getHours();
+      const minutes = currentDate.getMinutes();
+
+      // Convert current time to CT (Central Time)
+      // Note: This is a simplified approach. For more accuracy, use a timezone library
+      const currentHourCT = (hours - 5) % 24; // Convert from UTC to CT (UTC-5 or UTC-6 depending on DST)
+      if (currentHourCT < 0) currentHourCT += 24; // Handle negative hours
+
+      // The target time: 4:45 PM CT
+      const targetHourCT = 16; // 4 PM in 24-hour format
+      const targetMinute = 45;
+
+      // Check if it's time to run the daily check (after 4:45 PM CT) and we haven't run it today
+      const isAfterTargetTime = (currentHourCT > targetHourCT || 
+                                (currentHourCT === targetHourCT && minutes >= targetMinute));
+
+      const today = new Date(currentDate.toDateString());
+      const needsCheck = !lastDailyCheckDate || lastDailyCheckDate.getTime() < today.getTime();
+
+      if (isAfterTargetTime && needsCheck) {
+        await runDailyNoteCheck();
       }
 
       // Check for liquidatable notes every ~1 minute
