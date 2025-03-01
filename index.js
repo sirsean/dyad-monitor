@@ -396,6 +396,9 @@ async function watchCommand() {
   // Use WebSocket provider for real-time updates
   const wsProvider = new ethers.WebSocketProvider(process.env.ALCHEMY_WS_URL || process.env.ALCHEMY_RPC_URL.replace('https', 'wss'));
   
+  // Track the last time we fetched notes to avoid too many requests
+  let lastNotesFetch = 0;
+  
   wsProvider.on('block', async (blockNumber) => {
     try {
       const block = await wsProvider.getBlock(blockNumber);
@@ -405,6 +408,33 @@ async function watchCommand() {
       const gasPrice = ethers.formatUnits(feeData.gasPrice || 0, 'gwei');
       
       console.log(`Block #${blockNumber} | Time: ${timestamp} | Gas: ${gasPrice} gwei`);
+      
+      // Check for liquidatable notes every ~5 minutes (roughly 25 blocks)
+      const currentTime = Date.now();
+      if (currentTime - lastNotesFetch > 5 * 60 * 1000) {
+        lastNotesFetch = currentTime;
+        console.log('Checking for liquidatable notes...');
+        
+        try {
+          const notes = await GraphNote.search();
+          const liquidatableNotes = notes
+            .filter(note => note.collatRatio < ethers.parseUnits('1.6', 18))
+            .filter(note => note.dyad >= ethers.parseUnits('100', 18))
+            .sort((a, b) => Number(a.collatRatio) - Number(b.collatRatio));
+          
+          if (liquidatableNotes.length > 0) {
+            console.log(`\n=== Found ${liquidatableNotes.length} potentially liquidatable notes ===`);
+            liquidatableNotes.forEach(note => {
+              console.log(note.toString());
+            });
+            console.log('===\n');
+          } else {
+            console.log('No liquidatable notes found.');
+          }
+        } catch (error) {
+          console.error('Error fetching liquidatable notes:', error.message);
+        }
+      }
     } catch (error) {
       console.error(`Error processing block ${blockNumber}:`, error.message);
     }
