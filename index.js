@@ -399,6 +399,8 @@ async function watchCommand() {
   let lastDailyCheckDate = null;
   // Whether we've done the initial check on startup
   let initialCheckDone = false;
+  // Track the last time we fetched notes
+  let lastNotesFetch = 0;
 
   wsProvider.on('block', async (blockNumber) => {
     try {
@@ -467,8 +469,8 @@ async function watchCommand() {
       }
 
       // Check for liquidatable notes every ~1 minute
-      if (currentTime - lastNotesFetch > 60 * 1000) {
-        lastNotesFetch = currentTime;
+      if (blockTimestamp - lastNotesFetch > 60 * 1000) {
+        lastNotesFetch = blockTimestamp;
         console.log('Checking for liquidatable notes...');
 
         try {
