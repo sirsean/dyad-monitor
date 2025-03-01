@@ -460,7 +460,7 @@ async function watchCommand() {
 
       // The target time: 5:06 PM CT
       const targetHourCT = 17; // 5 PM in 24-hour format
-      const targetMinuteCT = 10;
+      const targetMinuteCT = 15;
 
       // Check if it's time to run the daily check (after 5:06 PM CT) and we haven't run it today
       const isAfterTargetTime = (hoursCT > targetHourCT || 
