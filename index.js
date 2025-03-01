@@ -434,12 +434,33 @@ async function watchCommand() {
                 // Get collateral ratio directly from vault manager contract
                 const actualCR = await vaultManager.collatRatio(note.id);
                 
+                // Format values for display
+                const crFormatted = ethers.formatUnits(actualCR, 18);
+                const dyadFormatted = ethers.formatUnits(note.dyad, 18);
+                const exoValueFormatted = ethers.formatUnits(exoValue, 18);
+                
                 // Print only the required information
                 console.log(`Note ID: ${note.id}`);
-                console.log(`CR: ${ethers.formatUnits(actualCR, 18)}`);
-                console.log(`DYAD: ${ethers.formatUnits(note.dyad, 18)}`);
-                console.log(`Exo Value: ${ethers.formatUnits(exoValue, 18)} USD`);
+                console.log(`CR: ${crFormatted}`);
+                console.log(`DYAD: ${dyadFormatted}`);
+                console.log(`Exo Value: ${exoValueFormatted} USD`);
                 console.log('---');
+                
+                // Check if note meets criteria for Discord notification:
+                // CR < 1.62 and exoValue > DYAD
+                if (parseFloat(crFormatted) < 1.62 && exoValue > note.dyad) {
+                  const notificationMessage = [
+                    `🚨 Liquidation Opportunity 🚨`,
+                    `Note ID: ${note.id}`,
+                    `CR: ${crFormatted}`,
+                    `DYAD: ${dyadFormatted}`,
+                    `Exo Value: ${exoValueFormatted} USD`,
+                    `Profit Potential: Exo Value > DYAD`
+                  ].join('\n');
+                  
+                  // Send notification to Discord
+                  await notify(notificationMessage);
+                }
               } catch (error) {
                 console.error(`Error getting values for note ${note.id}:`, error.message);
               }
