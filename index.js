@@ -427,15 +427,15 @@ async function watchCommand() {
             
             // Process each liquidatable note
             for (const note of liquidatableNotes) {
-              console.log(note.toString());
-              
               try {
                 // Get vault values from the contract
                 const [exoValue, keroValue] = await vaultManager.getVaultsValues(note.id);
                 
-                console.log(`Vault Values:`);
-                console.log(`- Exo Value: ${ethers.formatUnits(exoValue, 18)} USD`);
-                console.log(`- Kero Value: ${ethers.formatUnits(keroValue, 18)} USD`);
+                // Print only the required information
+                console.log(`Note ID: ${note.id}`);
+                console.log(`CR: ${ethers.formatUnits(note.collatRatio, 18)}`);
+                console.log(`DYAD: ${ethers.formatUnits(note.dyad, 18)}`);
+                console.log(`Exo Value: ${ethers.formatUnits(exoValue, 18)} USD`);
                 console.log('---');
               } catch (error) {
                 console.error(`Error getting vault values for note ${note.id}:`, error.message);
