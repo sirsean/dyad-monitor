@@ -451,11 +451,11 @@ async function watchCommand() {
       const currentHourCT = (hours - 5) % 24; // Convert from UTC to CT (UTC-5 or UTC-6 depending on DST)
       if (currentHourCT < 0) currentHourCT += 24; // Handle negative hours
 
-      // The target time: 4:45 PM CT
-      const targetHourCT = 16; // 4 PM in 24-hour format
-      const targetMinute = 45;
+      // The target time: 5:06 PM CT
+      const targetHourCT = 17; // 5 PM in 24-hour format
+      const targetMinute = 6;
 
-      // Check if it's time to run the daily check (after 4:45 PM CT) and we haven't run it today
+      // Check if it's time to run the daily check (after 5:06 PM CT) and we haven't run it today
       const isAfterTargetTime = (currentHourCT > targetHourCT || 
                                 (currentHourCT === targetHourCT && minutes >= targetMinute));
 
