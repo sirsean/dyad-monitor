@@ -75,13 +75,11 @@ async function initializeDiscord() {
 }
 
 async function notify(message) {
-  if (process.env.NODE_ENV == 'dev2') {
+  if (process.env.NODE_ENV == 'dev') {
     console.log(message);
   } else {
     try {
       // Check if Discord client is ready
-      console.log(`discord? ${discord}`);
-      console.log(`ready? ${discord.isReady()}`);
       if (!discord) {
         console.error('Discord client is not ready. Token may not be set.');
         console.log(message); // Fallback to logging the message
@@ -664,9 +662,7 @@ async function main() {
 
   // Only cleanup Discord client if we're NOT running the watch command
   if (!isWatchCommand) {
-    console.log('discord.destroy()');
     await discord.destroy();
-    console.log('all done!');
   }
 }
 
