@@ -49,6 +49,7 @@ class BlockProcessor {
       if (!this.initialCheckDone) {
         this.initialCheckDone = true;
         await this.runDailyNoteCheck(currentDate);
+        // Set the last check date in the processBlock method for the initial check
         this.lastDailyCheckDate = new Date(currentDate.toDateString());
       }
 
@@ -82,6 +83,9 @@ class BlockProcessor {
 
     if (isAfterTargetTime && needsCheck) {
       await this.runDailyNoteCheck(currentDate);
+      
+      // Update the last check date here in the state management method
+      this.lastDailyCheckDate = today;
     }
   }
 
@@ -106,8 +110,7 @@ class BlockProcessor {
       await this.notify(message);
 
       console.log('Daily note check completed.');
-      // Update the last check date
-      this.lastDailyCheckDate = new Date(currentDate.toDateString());
+      // The lastDailyCheckDate is now updated in checkForDailyRun
     } catch (error) {
       console.error('Error checking note:', error.message);
       await this.notify(`Error checking note: ${error.message}`);
