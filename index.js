@@ -80,7 +80,9 @@ async function notify(message) {
   } else {
     try {
       // Check if Discord client is ready
-      if (!discord || !discord.isReady()) {
+      console.log(`discord? ${discord}`);
+      console.log(`ready? ${discord.isReady()}`);
+      if (!discord) {
         console.error('Discord client is not ready. Token may not be set.');
         console.log(message); // Fallback to logging the message
         return;
@@ -647,7 +649,9 @@ async function main() {
   await program.parseAsync();
 
   // Cleanup
+  console.log('discord.destroy()');
   await discord.destroy();
+  console.log('all done!');
 }
 
 main().catch(error => {
