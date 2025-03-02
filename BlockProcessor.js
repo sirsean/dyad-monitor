@@ -12,8 +12,8 @@ class BlockProcessor {
     notify,
     noteIds,
     timeZone = 'America/Chicago',
-    targetHourCT = 17, // 5 PM in 24-hour format
-    targetMinuteCT = 23
+    targetHourCT = 5,
+    targetMinuteCT = 0
   }) {
     this.provider = provider;
     this.vaultManager = vaultManager;
@@ -69,11 +69,6 @@ class BlockProcessor {
     const hoursCT = getHours(dateCT);
     const minutesCT = getMinutes(dateCT);
 
-    // Log the CT time for debugging
-    const formattedCT = format(dateCT, 'yyyy-MM-dd HH:mm:ss zzz', { timeZone: this.timeZone });
-    console.log(`Current time (CT): ${formattedCT}`);
-    console.log(`Hours: ${hoursCT} (24-hour format), Minutes: ${minutesCT}`);
-
     // Check if it's time to run the daily check (after target time) and we haven't run it today
     const isAfterTargetTime = (hoursCT > this.targetHourCT || 
                               (hoursCT === this.targetHourCT && minutesCT >= this.targetMinuteCT));
@@ -110,9 +105,9 @@ class BlockProcessor {
       await this.notify(message);
 
       console.log('Daily note check completed.');
-      // The lastDailyCheckDate is now updated in checkForDailyRun
     } catch (error) {
       console.error('Error checking note:', error.message);
+      console.error(error);
       await this.notify(`Error checking note: ${error.message}`);
     }
   }
@@ -131,7 +126,7 @@ class BlockProcessor {
     try {
       const notes = await this.GraphNote.search();
       const liquidatableNotes = notes
-        .filter(note => note.collatRatio < ethers.parseUnits('1.7', 18))
+        .filter(note => note.collatRatio < ethers.parseUnits('1.5', 18))
         .filter(note => note.dyad >= ethers.parseUnits('100', 18))
         .sort((a, b) => Number(a.collatRatio) - Number(b.collatRatio));
 
@@ -160,7 +155,6 @@ class BlockProcessor {
             console.log('---');
 
             // Check if note meets criteria for Discord notification:
-            // CR < 1.62 and exoValue > DYAD
             if (parseFloat(crFormatted) < 1.62 && exoValue > note.dyad) {
               const notificationMessage = [
                 `🚨 Liquidation Opportunity 🚨`,
