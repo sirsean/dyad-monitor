@@ -465,7 +465,7 @@ async function watchCommand() {
 
       // The target time: 5:06 PM CT
       const targetHourCT = 17; // 5 PM in 24-hour format
-      const targetMinuteCT = 15;
+      const targetMinuteCT = 23;
 
       // Check if it's time to run the daily check (after 5:06 PM CT) and we haven't run it today
       const isAfterTargetTime = (hoursCT > targetHourCT || 
@@ -473,6 +473,7 @@ async function watchCommand() {
 
       const today = new Date(currentDate.toDateString());
       const needsCheck = !lastDailyCheckDate || lastDailyCheckDate.getTime() < today.getTime();
+      // TODO: this is not firing! why not?
 
       if (isAfterTargetTime && needsCheck) {
         await runDailyNoteCheck();
