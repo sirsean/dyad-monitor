@@ -2,8 +2,7 @@ import { Client, GatewayIntentBits } from 'discord.js';
 import { ethers } from 'ethers';
 import { readFile } from 'fs/promises';
 import { Command } from 'commander';
-import { format, getTimezoneOffset } from 'date-fns-tz';
-import { getHours, getMinutes, addMilliseconds } from 'date-fns';
+import BlockProcessor from './BlockProcessor.js';
 
 const VAULT_MANAGER_ADDRESS = '0xB62bdb1A6AC97A9B70957DD35357311e8859f0d7';
 const KEROSENE_VAULT_ADDRESS = '0x4808e4CC6a2Ba764778A0351E1Be198494aF0b43';
@@ -76,7 +75,7 @@ async function initializeDiscord() {
 }
 
 async function notify(message) {
-  if (process.env.NODE_ENV == 'dev') {
+  if (process.env.NODE_ENV == 'dev2') {
     console.log(message);
   } else {
     try {
@@ -427,8 +426,6 @@ async function checkRiskCommand(noteId) {
     console.log('Recommendation: No action needed');
   }
 }
-
-import BlockProcessor from './BlockProcessor.js';
 
 async function watchCommand() {
   console.log('Watching for new blocks...');
