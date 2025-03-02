@@ -390,6 +390,8 @@ async function checkRiskCommand(noteId) {
   }
 }
 
+import BlockProcessor from './BlockProcessor.js';
+
 async function watchCommand() {
   console.log('Watching for new blocks...');
   console.log('Press Ctrl+C to stop');
@@ -397,155 +399,19 @@ async function watchCommand() {
   // Use WebSocket provider for real-time updates
   const wsProvider = new ethers.WebSocketProvider(process.env.ALCHEMY_WS_URL || process.env.ALCHEMY_RPC_URL.replace('https', 'wss'));
 
-  // Track the date of the last daily check
-  let lastDailyCheckDate = null;
-  // Whether we've done the initial check on startup
-  let initialCheckDone = false;
-  // Track the last time we fetched notes
-  let lastNotesFetch = 0;
+  // Create a new BlockProcessor instance
+  const blockProcessor = new BlockProcessor(
+    wsProvider,
+    vaultManager,
+    dyad,
+    noteMessages,
+    notify,
+    process.env.NOTE_IDS
+  );
 
+  // Listen for new blocks and process them
   wsProvider.on('block', async (blockNumber) => {
-    try {
-      const block = await wsProvider.getBlock(blockNumber);
-      const feeData = await wsProvider.getFeeData();
-
-      const blockTimestamp = block.timestamp * 1000; // Convert to milliseconds
-      const currentDate = new Date(blockTimestamp);
-      const timestamp = currentDate.toISOString();
-      const gasPrice = ethers.formatUnits(feeData.gasPrice || 0, 'gwei');
-
-      console.log(`Block #${blockNumber} | Time: ${timestamp} | Gas: ${gasPrice} gwei`);
-
-      // Function to run the daily note check
-      const runDailyNoteCheck = async () => {
-        console.log('Running daily note check...');
-        try {
-          // Get the first note ID from the environment variable
-          const firstNoteId = process.env.NOTE_IDS.split(',')[0];
-          console.log(`Checking note ID: ${firstNoteId}`);
-
-          // Call noteMessages for the first note
-          const message = await noteMessages(firstNoteId);
-
-          // Send the result to Discord
-          await notify(message);
-
-          console.log('Daily note check completed.');
-          // Update the last check date
-          lastDailyCheckDate = new Date(currentDate.toDateString());
-        } catch (error) {
-          console.error('Error checking note:', error.message);
-          await notify(`Error checking note: ${error.message}`);
-        }
-      };
-
-      // Run initial check on startup
-      if (!initialCheckDone) {
-        initialCheckDone = true;
-        await runDailyNoteCheck();
-        lastDailyCheckDate = new Date(currentDate.toDateString());
-      }
-
-      // Convert to Central Time using date-fns-tz
-      const timeZone = 'America/Chicago'; // Central Time
-      
-      // The issue is that getTimezoneOffset returns the offset between UTC and specified timezone in milliseconds
-      // But we need to ADD this offset to convert UTC to local time (not subtract it)
-      const offsetMillis = getTimezoneOffset(timeZone, currentDate);
-      const dateCT = addMilliseconds(currentDate, offsetMillis);
-      
-      // Get hours and minutes in CT (24-hour format)
-      const hoursCT = getHours(dateCT);
-      const minutesCT = getMinutes(dateCT);
-      console.log(`Hours: ${hoursCT} (24-hour format), Minutes: ${minutesCT}`);
-      
-      // Log the CT time for debugging
-      const formattedCT = format(dateCT, 'yyyy-MM-dd HH:mm:ss zzz', { timeZone });
-      console.log(`Current time (CT): ${formattedCT}`);
-
-      // The target time: 5:06 PM CT
-      const targetHourCT = 17; // 5 PM in 24-hour format
-      const targetMinuteCT = 23;
-
-      // Check if it's time to run the daily check (after 5:06 PM CT) and we haven't run it today
-      const isAfterTargetTime = (hoursCT > targetHourCT || 
-                                (hoursCT === targetHourCT && minutesCT >= targetMinuteCT));
-
-      const today = new Date(currentDate.toDateString());
-      const needsCheck = !lastDailyCheckDate || lastDailyCheckDate.getTime() < today.getTime();
-      // TODO: this is not firing! why not?
-
-      if (isAfterTargetTime && needsCheck) {
-        await runDailyNoteCheck();
-      }
-
-      // Check for liquidatable notes every ~1 minute
-      if (blockTimestamp - lastNotesFetch > 60 * 1000) {
-        lastNotesFetch = blockTimestamp;
-        console.log('Checking for liquidatable notes...');
-
-        try {
-          const notes = await GraphNote.search();
-          const liquidatableNotes = notes
-            .filter(note => note.collatRatio < ethers.parseUnits('1.7', 18))
-            .filter(note => note.dyad >= ethers.parseUnits('100', 18))
-            .sort((a, b) => Number(a.collatRatio) - Number(b.collatRatio));
-
-          if (liquidatableNotes.length > 0) {
-            console.log(`\n=== Found ${liquidatableNotes.length} potentially liquidatable notes ===`);
-
-            // Process each liquidatable note
-            for (const note of liquidatableNotes) {
-              try {
-                // Get vault values from the contract
-                const [exoValue, keroValue] = await vaultManager.getVaultsValues(note.id);
-
-                // Get collateral ratio directly from vault manager contract
-                const actualCR = await vaultManager.collatRatio(note.id);
-
-                // Format values for display
-                const crFormatted = ethers.formatUnits(actualCR, 18);
-                const dyadFormatted = ethers.formatUnits(note.dyad, 18);
-                const exoValueFormatted = ethers.formatUnits(exoValue, 18);
-
-                // Print only the required information
-                console.log(`Note ID: ${note.id}`);
-                console.log(`CR: ${crFormatted}`);
-                console.log(`DYAD: ${dyadFormatted}`);
-                console.log(`Exo Value: ${exoValueFormatted} USD`);
-                console.log('---');
-
-                // Check if note meets criteria for Discord notification:
-                // CR < 1.62 and exoValue > DYAD
-                if (parseFloat(crFormatted) < 1.62 && exoValue > note.dyad) {
-                  const notificationMessage = [
-                    `🚨 Liquidation Opportunity 🚨`,
-                    `Note ID: ${note.id}`,
-                    `CR: ${crFormatted}`,
-                    `DYAD: ${dyadFormatted}`,
-                    `Exo Value: ${exoValueFormatted} USD`,
-                    `Profit Potential: Exo Value > DYAD`
-                  ].join('\n');
-
-                  // Send notification to Discord
-                  await notify(notificationMessage);
-                }
-              } catch (error) {
-                console.error(`Error getting values for note ${note.id}:`, error.message);
-              }
-            }
-
-            console.log('===\n');
-          } else {
-            console.log('No liquidatable notes found.');
-          }
-        } catch (error) {
-          console.error('Error fetching liquidatable notes:', error.message);
-        }
-      }
-    } catch (error) {
-      console.error(`Error processing block ${blockNumber}:`, error.message);
-    }
+    await blockProcessor.processBlock(blockNumber);
   });
 
   // Keep the process running
