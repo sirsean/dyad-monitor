@@ -400,14 +400,14 @@ async function watchCommand() {
   const wsProvider = new ethers.WebSocketProvider(process.env.ALCHEMY_WS_URL || process.env.ALCHEMY_RPC_URL.replace('https', 'wss'));
 
   // Create a new BlockProcessor instance
-  const blockProcessor = new BlockProcessor(
-    wsProvider,
+  const blockProcessor = new BlockProcessor({
+    provider: wsProvider,
     vaultManager,
     dyad,
     noteMessages,
     notify,
-    process.env.NOTE_IDS
-  );
+    noteIds: process.env.NOTE_IDS
+  });
 
   // Listen for new blocks and process them
   wsProvider.on('block', async (blockNumber) => {

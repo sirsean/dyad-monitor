@@ -4,7 +4,17 @@ import { format, getTimezoneOffset } from 'date-fns-tz';
 import { getHours, getMinutes, addMilliseconds } from 'date-fns';
 
 class BlockProcessor {
-  constructor(provider, vaultManager, dyad, noteMessages, notify, noteIds, timeZone = 'America/Chicago') {
+  constructor({
+    provider,
+    vaultManager,
+    dyad,
+    noteMessages,
+    notify,
+    noteIds,
+    timeZone = 'America/Chicago',
+    targetHourCT = 17, // 5 PM in 24-hour format
+    targetMinuteCT = 23
+  }) {
     this.provider = provider;
     this.vaultManager = vaultManager;
     this.dyad = dyad;
@@ -19,8 +29,8 @@ class BlockProcessor {
     this.lastNotesFetch = 0;
     
     // Configuration
-    this.targetHourCT = 17; // 5 PM in 24-hour format
-    this.targetMinuteCT = 23;
+    this.targetHourCT = targetHourCT;
+    this.targetMinuteCT = targetMinuteCT;
   }
 
   async processBlock(blockNumber) {
