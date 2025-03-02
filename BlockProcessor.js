@@ -165,7 +165,6 @@ class BlockProcessor {
                 `CR: ${crFormatted}`,
                 `DYAD: ${dyadFormatted}`,
                 `Exo Value: ${exoValueFormatted} USD`,
-                `Profit Potential: Exo Value > DYAD`
               ].join('\n');
 
               // Send notification to Discord
