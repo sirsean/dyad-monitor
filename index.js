@@ -440,13 +440,20 @@ async function watchCommand() {
     vaultManager,
     dyad,
     noteMessages,
-    notify,
     noteIds: process.env.NOTE_IDS
   });
 
   // Listen for new blocks and process them
   wsProvider.on('block', async (blockNumber) => {
-    await blockProcessor.processBlock(blockNumber);
+    // Process block and get any messages that need to be sent
+    const messages = await blockProcessor.processBlock(blockNumber);
+    
+    // Send messages if there are any
+    if (messages && messages.length > 0) {
+      for (const message of messages) {
+        await notify(message);
+      }
+    }
   });
 
   // Keep the process running

@@ -9,7 +9,6 @@ class BlockProcessor {
     vaultManager,
     dyad,
     noteMessages,
-    notify,
     noteIds,
     timeZone = 'America/Chicago',
     targetHourCT = 5,
@@ -19,7 +18,6 @@ class BlockProcessor {
     this.vaultManager = vaultManager;
     this.dyad = dyad;
     this.noteMessages = noteMessages;
-    this.notify = notify;
     this.noteIds = noteIds;
     this.timeZone = timeZone;
     
@@ -34,6 +32,8 @@ class BlockProcessor {
   }
 
   async processBlock(blockNumber) {
+    let messages = [];
+    
     try {
       const block = await this.provider.getBlock(blockNumber);
       const feeData = await this.provider.getFeeData();
@@ -48,18 +48,24 @@ class BlockProcessor {
       // Run initial check on startup if needed
       if (!this.initialCheckDone) {
         this.initialCheckDone = true;
-        await this.runDailyNoteCheck(currentDate);
+        const initialMessages = await this.runDailyNoteCheck(currentDate);
+        messages = messages.concat(initialMessages);
         // Set the last check date in the processBlock method for the initial check
         this.lastDailyCheckDate = new Date(currentDate.toDateString());
       }
 
       // Check if it's time for the daily note check
-      await this.checkForDailyRun(currentDate, blockTimestamp);
+      const dailyRunMessages = await this.checkForDailyRun(currentDate, blockTimestamp);
+      messages = messages.concat(dailyRunMessages);
 
       // Check for liquidatable notes if it's time
-      await this.checkForLiquidatableNotes(blockTimestamp);
+      const liquidatableMessages = await this.checkForLiquidatableNotes(blockTimestamp);
+      messages = messages.concat(liquidatableMessages);
+      
+      return messages;
     } catch (error) {
       console.error(`Error processing block ${blockNumber}:`, error.message);
+      return [`Error processing block ${blockNumber}: ${error.message}`];
     }
   }
 
@@ -77,11 +83,15 @@ class BlockProcessor {
     const needsCheck = !this.lastDailyCheckDate || this.lastDailyCheckDate.getTime() < today.getTime();
 
     if (isAfterTargetTime && needsCheck) {
-      await this.runDailyNoteCheck(currentDate);
+      const messages = await this.runDailyNoteCheck(currentDate);
       
       // Update the last check date here in the state management method
       this.lastDailyCheckDate = today;
+      
+      return messages;
     }
+    
+    return [];
   }
 
   convertToCentralTime(date) {
@@ -101,14 +111,13 @@ class BlockProcessor {
       // Call noteMessages for the first note
       const message = await this.noteMessages(firstNoteId);
 
-      // Send the result to Discord
-      await this.notify(message);
-
       console.log('Daily note check completed.');
+      // Return the message instead of sending it directly
+      return [message];
     } catch (error) {
       console.error('Error checking note:', error.message);
       console.error(error);
-      await this.notify(`Error checking note: ${error.message}`);
+      return [`Error checking note: ${error.message}`];
     }
   }
 
@@ -116,12 +125,14 @@ class BlockProcessor {
     // Check for liquidatable notes every ~1 minute
     if (blockTimestamp - this.lastNotesFetch > 60 * 1000) {
       this.lastNotesFetch = blockTimestamp;
-      await this.fetchLiquidatableNotes();
+      return await this.fetchLiquidatableNotes();
     }
+    return [];
   }
 
   async fetchLiquidatableNotes() {
     console.log('Checking for liquidatable notes...');
+    const messages = [];
 
     try {
       const notes = await this.GraphNote.search();
@@ -164,8 +175,8 @@ class BlockProcessor {
                 `Exo Value: ${exoValueFormatted} USD`,
               ].join('\n');
 
-              // Send notification to Discord
-              await this.notify(notificationMessage);
+              // Add message to the array instead of sending directly
+              messages.push(notificationMessage);
             }
           } catch (error) {
             console.error(`Error getting values for note ${note.id}:`, error.message);
@@ -178,7 +189,10 @@ class BlockProcessor {
       }
     } catch (error) {
       console.error('Error fetching liquidatable notes:', error.message);
+      messages.push(`Error fetching liquidatable notes: ${error.message}`);
     }
+    
+    return messages;
   }
 
   get GraphNote() {
