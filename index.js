@@ -52,22 +52,60 @@ async function initializeContracts() {
 }
 
 async function initializeDiscord() {
-  discord = new Client({
-    intents: [GatewayIntentBits.Guilds],
-  });
+  try {
+    if (!process.env.DISCORD_APP_TOKEN) {
+      console.error('DISCORD_APP_TOKEN is not set in environment variables');
+      return false;
+    }
+    
+    discord = new Client({
+      intents: [GatewayIntentBits.Guilds],
+    });
 
-  discord.on('error', console.error);
+    discord.on('error', (error) => {
+      console.error('Discord client error:', error.message);
+    });
 
-  await discord.login(process.env.DISCORD_APP_TOKEN);
-  console.log(`Logged in as ${discord.user.tag}!`);
+    await discord.login(process.env.DISCORD_APP_TOKEN);
+    console.log(`Logged in as ${discord.user.tag}!`);
+    return true;
+  } catch (error) {
+    console.error('Failed to initialize Discord client:', error.message);
+    return false;
+  }
 }
 
 async function notify(message) {
   if (process.env.NODE_ENV == 'dev') {
     console.log(message);
   } else {
-    await discord.channels.fetch(process.env.DISCORD_CHANNEL_ID)
-      .then(channel => channel.send(`\`\`\`>> DYAD Monitor\n===\n${message}\`\`\``));
+    try {
+      // Check if Discord client is ready
+      if (!discord || !discord.isReady()) {
+        console.error('Discord client is not ready. Token may not be set.');
+        console.log(message); // Fallback to logging the message
+        return;
+      }
+      
+      // Verify token is set
+      if (!process.env.DISCORD_APP_TOKEN) {
+        console.error('DISCORD_APP_TOKEN is not set in environment variables');
+        console.log(message); // Fallback to logging the message
+        return;
+      }
+      
+      const channel = await discord.channels.fetch(process.env.DISCORD_CHANNEL_ID);
+      if (!channel) {
+        console.error(`Could not find Discord channel with ID: ${process.env.DISCORD_CHANNEL_ID}`);
+        console.log(message); // Fallback to logging the message
+        return;
+      }
+      
+      await channel.send(`\`\`\`>> DYAD Monitor\n===\n${message}\`\`\``);
+    } catch (error) {
+      console.error('Error sending Discord notification:', error.message);
+      console.log(message); // Fallback to logging the message
+    }
   }
 }
 
@@ -546,7 +584,11 @@ async function liquidateNote(noteId, dyadAmount) {
 async function main() {
   await initializeWallet();
   await initializeContracts();
-  await initializeDiscord();
+  
+  const discordInitialized = await initializeDiscord();
+  if (!discordInitialized) {
+    console.warn('Discord client failed to initialize. Notifications will be logged to console only.');
+  }
 
   const program = new Command();
 
