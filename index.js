@@ -464,7 +464,15 @@ async function watchCommand() {
   // Handle cleanup on exit
   process.on('SIGINT', async () => {
     console.log('Stopping block watcher...');
+    
+    // Clean up Discord client when watch command is interrupted
+    console.log('Cleaning up Discord client...');
+    await discord.destroy();
+    
+    // Clean up WebSocket provider
     await wsProvider.destroy();
+    
+    console.log('Cleanup complete, exiting...');
     process.exit(0);
   });
 }
@@ -598,6 +606,9 @@ async function main() {
 
   const program = new Command();
 
+  // Track if we're running the watch command
+  let isWatchCommand = false;
+
   program
     .name('dyad-monitor')
     .description('CLI tool for monitoring DYAD notes')
@@ -644,14 +655,19 @@ async function main() {
 
   program.command('watch')
     .description('Watch for new blocks in real-time')
-    .action(watchCommand);
+    .action(() => {
+      isWatchCommand = true;
+      return watchCommand();
+    });
 
   await program.parseAsync();
 
-  // Cleanup
-  console.log('discord.destroy()');
-  await discord.destroy();
-  console.log('all done!');
+  // Only cleanup Discord client if we're NOT running the watch command
+  if (!isWatchCommand) {
+    console.log('discord.destroy()');
+    await discord.destroy();
+    console.log('all done!');
+  }
 }
 
 main().catch(error => {
