@@ -499,13 +499,14 @@ async function watchCommand() {
   // Use WebSocket provider for real-time updates
   const wsProvider = new ethers.WebSocketProvider(process.env.ALCHEMY_WS_URL || process.env.ALCHEMY_RPC_URL.replace('https', 'wss'));
 
-  // Create a new BlockProcessor instance
+  // Create a new BlockProcessor instance with scheduled execution
   const blockProcessor = new BlockProcessor({
     provider: wsProvider,
     vaultManager,
     dyad,
     noteMessages,
-    noteIds: process.env.NOTE_IDS
+    noteIds: process.env.NOTE_IDS,
+    // Use default schedule (5am CT) if not specified
   });
 
   // Listen for new blocks and process them

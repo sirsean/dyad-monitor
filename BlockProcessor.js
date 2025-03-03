@@ -1,7 +1,6 @@
 
 import { ethers } from 'ethers';
-import { format, getTimezoneOffset } from 'date-fns-tz';
-import { getHours, getMinutes, addMilliseconds } from 'date-fns';
+import ExecutionSchedule from './ExecutionSchedule.js';
 
 class BlockProcessor {
   constructor({
@@ -10,25 +9,22 @@ class BlockProcessor {
     dyad,
     noteMessages,
     noteIds,
-    timeZone = 'America/Chicago',
-    targetHourCT = 5,
-    targetMinuteCT = 0
+    schedule = new ExecutionSchedule({
+      timeZone: 'America/Chicago',
+      targetHour: 5,
+      targetMinute: 0
+    })
   }) {
     this.provider = provider;
     this.vaultManager = vaultManager;
     this.dyad = dyad;
     this.noteMessages = noteMessages;
     this.noteIds = noteIds;
-    this.timeZone = timeZone;
+    this.schedule = schedule;
     
     // State tracking
-    this.lastDailyCheckDate = null;
     this.initialCheckDone = false;
     this.lastNotesFetch = 0;
-    
-    // Configuration
-    this.targetHourCT = targetHourCT;
-    this.targetMinuteCT = targetMinuteCT;
   }
 
   async processBlock(blockNumber) {
@@ -50,8 +46,8 @@ class BlockProcessor {
         this.initialCheckDone = true;
         const initialMessages = await this.runDailyNoteCheck(currentDate);
         messages = messages.concat(initialMessages);
-        // Set the last check date in the processBlock method for the initial check
-        this.lastDailyCheckDate = new Date(currentDate.toDateString());
+        // Mark execution as completed for today
+        this.schedule.markExecuted(currentDate);
       }
 
       // Check if it's time for the daily note check
@@ -70,35 +66,18 @@ class BlockProcessor {
   }
 
   async checkForDailyRun(currentDate, blockTimestamp) {
-    // Get the CT time info
-    const dateCT = this.convertToCentralTime(currentDate);
-    const hoursCT = getHours(dateCT);
-    const minutesCT = getMinutes(dateCT);
-
-    // Check if it's time to run the daily check (after target time) and we haven't run it today
-    const isAfterTargetTime = (hoursCT > this.targetHourCT || 
-                              (hoursCT === this.targetHourCT && minutesCT >= this.targetMinuteCT));
-
-    const today = new Date(currentDate.toDateString());
-    const needsCheck = !this.lastDailyCheckDate || this.lastDailyCheckDate.getTime() < today.getTime();
-
-    if (isAfterTargetTime && needsCheck) {
+    // Use the schedule to check if we should trigger the daily run
+    if (this.schedule.shouldTrigger(currentDate)) {
+      console.log(`Daily check triggered at ${this.schedule.getTimeZoneString(currentDate)}`);
       const messages = await this.runDailyNoteCheck(currentDate);
       
-      // Update the last check date here in the state management method
-      this.lastDailyCheckDate = today;
+      // Mark the execution as completed
+      this.schedule.markExecuted(currentDate);
       
       return messages;
     }
     
     return [];
-  }
-
-  convertToCentralTime(date) {
-    // The timezone offset returns the difference between UTC and the specified timezone in milliseconds
-    // We need to ADD this offset to convert UTC to local time
-    const offsetMillis = getTimezoneOffset(this.timeZone, date);
-    return addMilliseconds(date, offsetMillis);
   }
 
   async runDailyNoteCheck(currentDate) {
