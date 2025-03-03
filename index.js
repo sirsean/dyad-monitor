@@ -427,6 +427,71 @@ async function checkRiskCommand(noteId) {
   }
 }
 
+async function checkClaimableCommand() {
+  const pricer = new Pricer();
+  
+  // Get token prices for calculations
+  const mpPrice = await pricer.getPrice("KEROSENE");
+  const dvPrice = await keroseneVault.assetPrice().then(r => parseFloat(r) * 10 ** -8);
+  
+  // Get note ID from environment variable
+  const noteId = process.env.NOTE_IDS.split(",")[0];
+  
+  // Fetch raw rewards data from API
+  const rewards = await fetchRewards(noteId);
+  console.log(`Note ID: ${noteId}`);
+  console.log(`Raw rewards amount: ${ethers.formatUnits(rewards.amount, 18)} KERO`);
+  
+  // Get the amount already claimed from the contract
+  const claimed = await dyadLpStakingFactory.noteIdToTotalClaimed(noteId);
+  console.log(`Amount already claimed: ${ethers.formatUnits(claimed, 18)} KERO`);
+  
+  // Calculate claimable amount
+  const claimable = BigInt(rewards.amount) - claimed;
+  const claimableFormatted = ethers.formatUnits(claimable, 18);
+  
+  // Calculate USD values based on different price sources
+  const mpValueUSD = parseFloat(claimableFormatted) * mpPrice;
+  const dvValueUSD = parseFloat(claimableFormatted) * dvPrice;
+  
+  console.log(`\nClaimable amount: ${claimableFormatted} KERO`);
+  console.log(`MP value: $${formatNumber(mpValueUSD, 2)}`);
+  console.log(`DV value: $${formatNumber(dvValueUSD, 2)}`);
+  
+  // If there's anything to claim, estimate gas costs
+  if (claimable > 0 && wallet) {
+    try {
+      const dyadLpStakingFactoryWriter = dyadLpStakingFactory.connect(wallet);
+      const gasEstimate = await dyadLpStakingFactoryWriter.claimToVault.estimateGas(
+        noteId,
+        rewards.amount,
+        rewards.proof
+      );
+      const gasPrice = await provider.getFeeData().then((d) => d.gasPrice);
+      const gas = gasEstimate * gasPrice;
+      const ethPrice = await pricer.getPrice("ETH");
+      const usdGasCost = parseFloat(gas) * 10 ** -18 * ethPrice;
+      const percentage = usdGasCost / mpValueUSD;
+      
+      console.log(`\nGas estimate: ${ethers.formatEther(gas)} ETH ($${formatNumber(usdGasCost, 2)})`);
+      console.log(`Gas cost as percentage of claim value: ${formatNumber(percentage * 100, 2)}%`);
+      
+      if (percentage < 0.01) {
+        console.log(`\nRecommendation: Claiming is economical (gas < 1% of claim value)`);
+      } else {
+        console.log(`\nRecommendation: Consider waiting to claim (gas is ${formatNumber(percentage * 100, 2)}% of claim value)`);
+      }
+    } catch (err) {
+      console.error('Error estimating gas:', err.message);
+      console.log('\nUnable to estimate gas costs for claiming.');
+    }
+  } else if (claimable <= 0) {
+    console.log('\nNothing to claim at this time.');
+  } else {
+    console.log('\nWallet not initialized, cannot estimate gas costs.');
+  }
+}
+
 async function watchCommand() {
   console.log('Watching for new blocks...');
   console.log('Press Ctrl+C to stop');
@@ -650,6 +715,10 @@ async function main() {
     .description('Check risk metrics for a note')
     .argument('<noteId>', 'Note ID to check')
     .action(checkRiskCommand);
+
+  program.command('check-claimable')
+    .description('Check how much KEROSENE can be claimed')
+    .action(checkClaimableCommand);
 
   program.command('watch')
     .description('Watch for new blocks in real-time')
