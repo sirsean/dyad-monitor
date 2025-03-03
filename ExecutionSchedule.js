@@ -1,6 +1,6 @@
 
 import { format, getTimezoneOffset } from 'date-fns-tz';
-import { getHours, getMinutes, addMilliseconds } from 'date-fns';
+import { getHours, getMinutes, addMilliseconds, startOfDay } from 'date-fns';
 
 class ExecutionSchedule {
   constructor({ 
@@ -26,10 +26,12 @@ class ExecutionSchedule {
       (hoursInTZ === this.targetHour && minutesInTZ >= this.targetMinute)
     );
 
-    // Check if we already ran today
-    const today = new Date(currentDate.toDateString());
+    // Get today's date in the timezone
+    const todayInTimeZone = startOfDay(dateInTimeZone);
+    
+    // Check if we already ran today in the timezone
     const needsExecution = !this.lastExecutionDate || 
-                           this.lastExecutionDate.getTime() < today.getTime();
+                           this.lastExecutionDate.getTime() < todayInTimeZone.getTime();
 
     // If it's after the target time and we haven't run today, trigger the execution
     if (isAfterTargetTime && needsExecution) {
@@ -40,8 +42,9 @@ class ExecutionSchedule {
   }
 
   markExecuted(date) {
-    // Store just the date part (without time) for comparing days
-    this.lastExecutionDate = new Date(date.toDateString());
+    // Store the date in the timezone without time part for comparing days
+    const dateInTimeZone = this.convertToTimeZone(date);
+    this.lastExecutionDate = startOfDay(dateInTimeZone);
   }
 
   convertToTimeZone(date) {
