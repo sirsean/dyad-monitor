@@ -504,6 +504,27 @@ async function watchCommand() {
   const maxReconnectDelay = 60000; // 1 minute max between reconnections
   let healthCheckInterval = null;
   
+  // Function to reconnect with exponential backoff
+  const reconnect = async () => {
+    reconnectAttempt++;
+    
+    // Calculate backoff delay with exponential increase and jitter
+    const baseDelay = Math.min(1000 * Math.pow(2, reconnectAttempt - 1), maxReconnectDelay);
+    const jitter = Math.random() * 0.3 * baseDelay; // Add up to 30% jitter
+    const delay = baseDelay + jitter;
+    
+    console.log(`Reconnecting in ${Math.round(delay / 1000)} seconds...`);
+    
+    // Wait for the delay before reconnecting
+    setTimeout(async () => {
+      const success = await setupWebSocketProvider();
+      if (success) {
+        console.log('Successfully reconnected to WebSocket');
+        await notify('WebSocket connection re-established');
+      }
+    }, delay);
+  };
+  
   // Function to create and set up the websocket provider
   const setupWebSocketProvider = async () => {
     try {
@@ -582,27 +603,6 @@ async function watchCommand() {
       await notify(`Failed to set up WebSocket provider: ${error.message}`);
       return false;
     }
-  };
-  
-  // Function to reconnect with exponential backoff
-  const reconnect = async () => {
-    reconnectAttempt++;
-    
-    // Calculate backoff delay with exponential increase and jitter
-    const baseDelay = Math.min(1000 * Math.pow(2, reconnectAttempt - 1), maxReconnectDelay);
-    const jitter = Math.random() * 0.3 * baseDelay; // Add up to 30% jitter
-    const delay = baseDelay + jitter;
-    
-    console.log(`Reconnecting in ${Math.round(delay / 1000)} seconds...`);
-    
-    // Wait for the delay before reconnecting
-    setTimeout(async () => {
-      const success = await setupWebSocketProvider();
-      if (success) {
-        console.log('Successfully reconnected to WebSocket');
-        await notify('WebSocket connection re-established');
-      }
-    }, delay);
   };
   
   // Health check function to detect stalled connections
