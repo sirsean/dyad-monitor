@@ -116,7 +116,7 @@ class BlockProcessor {
     try {
       const notes = await this.GraphNote.search();
       const liquidatableNotes = notes
-        .filter(note => note.collatRatio < ethers.parseUnits('1.5', 18))
+        .filter(note => note.collatRatio < ethers.parseUnits('1.75', 18))
         .filter(note => note.dyad >= ethers.parseUnits('100', 18))
         .sort((a, b) => Number(a.collatRatio) - Number(b.collatRatio));
 
@@ -138,14 +138,10 @@ class BlockProcessor {
             const exoValueFormatted = ethers.formatUnits(exoValue, 18);
 
             // Print only the required information
-            console.log(`Note ID: ${note.id}`);
-            console.log(`CR: ${crFormatted}`);
-            console.log(`DYAD: ${dyadFormatted}`);
-            console.log(`Exo Value: ${exoValueFormatted} USD`);
-            console.log('---');
+            console.log(`Note ID: ${note.id} | CR: ${crFormatted} | DYAD: ${dyadFormatted} | Exo Value: ${exoValueFormatted} USD`);
 
             // Check if note meets criteria for Discord notification:
-            if (parseFloat(crFormatted) < 1.62 && exoValue > note.dyad) {
+            if (parseFloat(crFormatted) < 1.5 && exoValue > note.dyad) {
               const notificationMessage = [
                 `🚨 Liquidation Opportunity 🚨`,
                 `Note ID: ${note.id}`,
