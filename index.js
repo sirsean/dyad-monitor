@@ -496,45 +496,157 @@ async function watchCommand() {
   console.log('Watching for new blocks...');
   console.log('Press Ctrl+C to stop');
 
-  // Use WebSocket provider for real-time updates
-  const wsProvider = new ethers.WebSocketProvider(process.env.ALCHEMY_WS_URL || process.env.ALCHEMY_RPC_URL.replace('https', 'wss'));
-
-  // Create a new BlockProcessor instance with scheduled execution
-  const blockProcessor = new BlockProcessor({
-    provider: wsProvider,
-    vaultManager,
-    dyad,
-    noteMessages,
-    noteIds: process.env.NOTE_IDS,
-    // Use default schedule (5am CT) if not specified
-  });
-
-  // Listen for new blocks and process them
-  wsProvider.on('block', async (blockNumber) => {
-    // Process block and get any messages that need to be sent
-    const messages = await blockProcessor.processBlock(blockNumber);
-    
-    // Send messages if there are any
-    if (messages && messages.length > 0) {
-      for (const message of messages) {
-        await notify(message);
+  // Variables to track websocket status
+  let wsProvider = null;
+  let blockProcessor = null;
+  let lastBlockTime = Date.now();
+  let reconnectAttempt = 0;
+  const maxReconnectDelay = 60000; // 1 minute max between reconnections
+  let healthCheckInterval = null;
+  
+  // Function to create and set up the websocket provider
+  const setupWebSocketProvider = async () => {
+    try {
+      // Clean up existing provider if it exists
+      if (wsProvider) {
+        console.log('Closing existing WebSocket connection...');
+        wsProvider.removeAllListeners();
+        await wsProvider.destroy().catch(err => console.error('Error destroying provider:', err.message));
       }
+      
+      // Create new provider
+      console.log(`Setting up WebSocket provider (attempt: ${reconnectAttempt + 1})...`);
+      wsProvider = new ethers.WebSocketProvider(process.env.ALCHEMY_WS_URL || process.env.ALCHEMY_RPC_URL.replace('https', 'wss'));
+      
+      // Create a new BlockProcessor instance with the new provider
+      blockProcessor = new BlockProcessor({
+        provider: wsProvider,
+        vaultManager,
+        dyad,
+        noteMessages,
+        noteIds: process.env.NOTE_IDS,
+        // Use default schedule (5am CT) if not specified
+      });
+      
+      // Set up event listeners
+      wsProvider.on('block', async (blockNumber) => {
+        // Reset reconnect attempt counter on successful block
+        reconnectAttempt = 0;
+        
+        // Update last block time
+        lastBlockTime = Date.now();
+        
+        // Process block and get any messages that need to be sent
+        const messages = await blockProcessor.processBlock(blockNumber);
+        
+        // Send messages if there are any
+        if (messages && messages.length > 0) {
+          for (const message of messages) {
+            await notify(message);
+          }
+        }
+      });
+      
+      // Handle WebSocket specific errors
+      wsProvider.websocket.on('error', async (error) => {
+        console.error(`WebSocket error: ${error.message}`);
+        await notify(`WebSocket connection error: ${error.message}`);
+        
+        // Trigger reconnect
+        await reconnect();
+      });
+      
+      wsProvider.websocket.on('close', async () => {
+        console.warn('WebSocket connection closed');
+        await notify('WebSocket connection closed unexpectedly. Attempting to reconnect...');
+        
+        // Trigger reconnect
+        await reconnect();
+      });
+      
+      // General provider errors
+      wsProvider.on('error', async (error) => {
+        console.error(`Provider error: ${error.message}`);
+        await notify(`Provider error: ${error.message}`);
+        
+        // Trigger reconnect
+        await reconnect();
+      });
+      
+      // Reset the block time to now
+      lastBlockTime = Date.now();
+      
+      return true;
+    } catch (error) {
+      console.error(`Failed to set up WebSocket provider: ${error.message}`);
+      await notify(`Failed to set up WebSocket provider: ${error.message}`);
+      return false;
     }
-  });
-
+  };
+  
+  // Function to reconnect with exponential backoff
+  const reconnect = async () => {
+    reconnectAttempt++;
+    
+    // Calculate backoff delay with exponential increase and jitter
+    const baseDelay = Math.min(1000 * Math.pow(2, reconnectAttempt - 1), maxReconnectDelay);
+    const jitter = Math.random() * 0.3 * baseDelay; // Add up to 30% jitter
+    const delay = baseDelay + jitter;
+    
+    console.log(`Reconnecting in ${Math.round(delay / 1000)} seconds...`);
+    
+    // Wait for the delay before reconnecting
+    setTimeout(async () => {
+      const success = await setupWebSocketProvider();
+      if (success) {
+        console.log('Successfully reconnected to WebSocket');
+        await notify('WebSocket connection re-established');
+      }
+    }, delay);
+  };
+  
+  // Health check function to detect stalled connections
+  const checkConnectionHealth = async () => {
+    const currentTime = Date.now();
+    const timeSinceLastBlock = currentTime - lastBlockTime;
+    
+    // If it's been more than 5 minutes since the last block, consider the connection stalled
+    if (timeSinceLastBlock > 5 * 60 * 1000) { // 5 minutes
+      console.warn(`No blocks received for ${Math.round(timeSinceLastBlock / 1000 / 60)} minutes. Connection may be stalled.`);
+      await notify(`No blocks received for ${Math.round(timeSinceLastBlock / 1000 / 60)} minutes. Attempting to reconnect...`);
+      
+      // Force a reconnection
+      await reconnect();
+    }
+  };
+  
+  // Initial setup
+  await setupWebSocketProvider();
+  
+  // Set up health check interval
+  healthCheckInterval = setInterval(checkConnectionHealth, 60 * 1000); // Check every minute
+  
   // Keep the process running
   process.stdin.resume();
-
+  
   // Handle cleanup on exit
   process.on('SIGINT', async () => {
     console.log('Stopping block watcher...');
+    
+    // Clear health check interval
+    if (healthCheckInterval) {
+      clearInterval(healthCheckInterval);
+    }
     
     // Clean up Discord client when watch command is interrupted
     console.log('Cleaning up Discord client...');
     await discord.destroy();
     
     // Clean up WebSocket provider
-    await wsProvider.destroy();
+    if (wsProvider) {
+      console.log('Cleaning up WebSocket provider...');
+      await wsProvider.destroy().catch(err => console.error('Error destroying provider:', err.message));
+    }
     
     console.log('Cleanup complete, exiting...');
     process.exit(0);
