@@ -490,6 +490,35 @@ async function burnCommand(noteId, amount) {
   }
 }
 
+async function balanceCommand() {
+  if (!wallet) {
+    throw new Error("Wallet not initialized");
+  }
+  
+  try {
+    // Get wallet's DYAD balance
+    const walletBalance = await dyad.balanceOf(wallet.address);
+    console.log(`Wallet DYAD Balance: ${ethers.formatUnits(walletBalance, 18)} DYAD`);
+    
+    // Get all configured note IDs
+    const noteIds = process.env.NOTE_IDS.split(',');
+    console.log('\nMinted DYAD by Note:');
+    
+    // Fetch minted DYAD for each note
+    for (const noteId of noteIds) {
+      const mintedAmount = await dyad.mintedDyad(noteId);
+      console.log(`Note ${noteId}: ${ethers.formatUnits(mintedAmount, 18)} DYAD`);
+      
+      // Calculate the collateral ratio for context
+      const cr = await vaultManager.collatRatio(noteId);
+      const crFloat = formatNumber(ethers.formatUnits(cr, 18), 3);
+      console.log(`  Collateral Ratio: ${crFloat}`);
+    }
+  } catch (error) {
+    console.error(`Error fetching DYAD balances: ${error.message}`);
+  }
+}
+
 async function checkClaimableCommand() {
   const pricer = new Pricer();
   
@@ -940,6 +969,10 @@ async function main() {
     .argument('<noteId>', 'Note ID to burn DYAD from')
     .argument('<amount>', 'Amount of DYAD to burn')
     .action(burnCommand);
+    
+  program.command('balance')
+    .description('Check DYAD balance in wallet and minted by notes')
+    .action(balanceCommand);
 
   program.command('watch')
     .description('Watch for new blocks in real-time')
