@@ -3,6 +3,7 @@ import { ethers } from 'ethers';
 import { readFile } from 'fs/promises';
 import { Command } from 'commander';
 import BlockProcessor from './BlockProcessor.js';
+import GraphNote from './GraphNote.js';
 
 const VAULT_MANAGER_ADDRESS = '0xB62bdb1A6AC97A9B70957DD35357311e8859f0d7';
 const KEROSENE_VAULT_ADDRESS = '0x4808e4CC6a2Ba764778A0351E1Be198494aF0b43';
@@ -303,54 +304,7 @@ async function noteMessages(noteId) {
   return messages.join('\n');
 }
 
-class GraphNote {
-  constructor(data) {
-    this.id = data.id;
-    this.collatRatio = BigInt(data.collatRatio);
-    this.kerosene = BigInt(data.kerosene);
-    this.dyad = BigInt(data.dyad);
-    this.xp = BigInt(data.xp);
-    this.collateral = BigInt(data.collateral);
-  }
-
-  toString() {
-    return [
-      `Note ID: ${this.id}`,
-      `Collateral Ratio: ${ethers.formatUnits(this.collatRatio, 18)}`,
-      `DYAD: ${ethers.formatUnits(this.dyad, 18)}`,
-      `Collateral: ${ethers.formatUnits(this.collateral, 18)}`,
-      '---'
-    ].join('\n');
-  }
-
-  static async search() {
-    const query = `{
-      notes(limit: 1000) {
-        items {
-          id
-          collatRatio
-          kerosene
-          dyad
-          xp
-          collateral
-          __typename
-        }
-        __typename
-      }
-    }`;
-
-    const response = await fetch('https://api.dyadstable.xyz/', {
-      method: 'POST',
-      headers: {
-        'Content-Type': 'application/json',
-      },
-      body: JSON.stringify({ query })
-    });
-
-    const data = await response.json();
-    return data.data.notes.items.map(item => new GraphNote(item));
-  }
-}
+// GraphNote class moved to separate file
 
 async function monitorCommand() {
   const noteIds = process.env.NOTE_IDS.split(',');
