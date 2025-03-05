@@ -6,6 +6,7 @@ import BlockProcessor from './src/BlockProcessor.js';
 import GraphNote from './src/GraphNote.js';
 import DailyCheckProcessor from './src/DailyCheckProcessor.js';
 import ExecutionSchedule from './src/ExecutionSchedule.js';
+import Pricer from './src/Pricer.js';
 
 const VAULT_MANAGER_ADDRESS = '0xB62bdb1A6AC97A9B70957DD35357311e8859f0d7';
 const KEROSENE_VAULT_ADDRESS = '0x4808e4CC6a2Ba764778A0351E1Be198494aF0b43';
@@ -110,8 +111,6 @@ async function notify(message) {
     }
   }
 }
-
-import Pricer from './src/Pricer.js';
 
 async function fetchRewards(noteId) {
   return fetch(`https://api.dyadstable.xyz/api/rewards/${noteId}`)
@@ -283,8 +282,6 @@ async function noteMessages(noteId) {
 
   return messages.join('\n');
 }
-
-// GraphNote class moved to separate file
 
 async function monitorCommand() {
   const noteIds = process.env.NOTE_IDS.split(',');
