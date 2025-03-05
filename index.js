@@ -358,6 +358,139 @@ async function checkRiskCommand(noteId) {
   }
 }
 
+const MIN_CR = 2.0;
+
+async function mintCommand(noteId, amount) {
+  if (!wallet) {
+    throw new Error("Wallet not initialized");
+  }
+
+  // Parse amount to BigInt with 18 decimals
+  const dyadAmount = ethers.parseUnits(amount.toString(), 18);
+  
+  // Get current collateral ratio
+  const currentCR = await vaultManager.collatRatio(noteId);
+  const currentCRFloat = formatNumber(ethers.formatUnits(currentCR, 18), 3);
+  console.log(`Note: ${noteId}`);
+  console.log(`Before Mint - Collateral Ratio: ${currentCRFloat}`);
+  
+  // Calculate what CR would be after mint
+  const totalValue = await vaultManager.getTotalValue(noteId);
+  const mintedDyad = await dyad.mintedDyad(noteId);
+  const newDyadTotal = mintedDyad + dyadAmount;
+  
+  // CR = totalValue / totalDyad
+  const newCR = totalValue * BigInt(10**18) / newDyadTotal;
+  const newCRFloat = formatNumber(ethers.formatUnits(newCR, 18), 3);
+  
+  console.log(`After Mint - Estimated Collateral Ratio: ${newCRFloat}`);
+  
+  // Check if CR would go below MIN_CR
+  if (newCRFloat < MIN_CR) {
+    console.error(`Cannot mint: Collateral ratio would go below ${MIN_CR}`);
+    return;
+  }
+  
+  try {
+    // Connect wallet to vault manager
+    const vaultManagerWriter = vaultManager.connect(wallet);
+    
+    // Execute mint operation
+    console.log(`Minting ${amount} DYAD to note ${noteId}`);
+    const tx = await vaultManagerWriter.mintDyad(noteId, dyadAmount, wallet.address);
+    
+    // Wait for transaction to complete
+    const receipt = await tx.wait();
+    console.log(`Transaction successful: ${receipt.hash}`);
+    
+    // Get new collateral ratio
+    const finalCR = await vaultManager.collatRatio(noteId);
+    const finalCRFloat = formatNumber(ethers.formatUnits(finalCR, 18), 3);
+    console.log(`Final Collateral Ratio: ${finalCRFloat}`);
+  } catch (error) {
+    console.error(`Error minting DYAD: ${error.message}`);
+  }
+}
+
+async function burnCommand(noteId, amount) {
+  if (!wallet) {
+    throw new Error("Wallet not initialized");
+  }
+  
+  // Parse amount to BigInt with 18 decimals
+  const dyadAmount = ethers.parseUnits(amount.toString(), 18);
+  
+  // Get current collateral ratio
+  const currentCR = await vaultManager.collatRatio(noteId);
+  const currentCRFloat = formatNumber(ethers.formatUnits(currentCR, 18), 3);
+  console.log(`Note: ${noteId}`);
+  console.log(`Before Burn - Collateral Ratio: ${currentCRFloat}`);
+  
+  // Get current DYAD minted
+  const mintedDyad = await dyad.mintedDyad(noteId);
+  
+  // Check if there's enough DYAD minted to burn
+  if (dyadAmount > mintedDyad) {
+    console.error(`Cannot burn ${amount} DYAD: Note only has ${ethers.formatUnits(mintedDyad, 18)} DYAD minted`);
+    return;
+  }
+  
+  // Calculate what CR would be after burn
+  const totalValue = await vaultManager.getTotalValue(noteId);
+  const newDyadTotal = mintedDyad - dyadAmount;
+  
+  // Avoid division by zero if burning all DYAD
+  let newCRFloat;
+  if (newDyadTotal === BigInt(0)) {
+    newCRFloat = "∞";
+  } else {
+    const newCR = totalValue * BigInt(10**18) / newDyadTotal;
+    newCRFloat = formatNumber(ethers.formatUnits(newCR, 18), 3);
+  }
+  
+  console.log(`After Burn - Estimated Collateral Ratio: ${newCRFloat}`);
+  
+  try {
+    // Check DYAD balance
+    const dyadBalance = await dyad.balanceOf(wallet.address);
+    
+    // If we don't have enough DYAD, we need to mint it first
+    if (dyadBalance < dyadAmount) {
+      console.log(`Insufficient DYAD balance. Minting ${ethers.formatUnits(dyadAmount - dyadBalance, 18)} DYAD first...`);
+      const vaultManagerWriter = vaultManager.connect(wallet);
+      const mintTx = await vaultManagerWriter.mintDyad(noteId, dyadAmount - dyadBalance, wallet.address);
+      await mintTx.wait();
+    }
+    
+    // Approve VaultManager to spend DYAD if needed
+    const currentAllowance = await dyad.allowance(wallet.address, VAULT_MANAGER_ADDRESS);
+    if (currentAllowance < dyadAmount) {
+      console.log(`Approving DYAD transfer...`);
+      const dyadWriter = dyad.connect(wallet);
+      const approveTx = await dyadWriter.approve(VAULT_MANAGER_ADDRESS, dyadAmount);
+      await approveTx.wait();
+    }
+    
+    // Connect wallet to vault manager
+    const vaultManagerWriter = vaultManager.connect(wallet);
+    
+    // Execute burn operation
+    console.log(`Burning ${amount} DYAD from note ${noteId}`);
+    const tx = await vaultManagerWriter.burnDyad(noteId, dyadAmount);
+    
+    // Wait for transaction to complete
+    const receipt = await tx.wait();
+    console.log(`Transaction successful: ${receipt.hash}`);
+    
+    // Get new collateral ratio
+    const finalCR = await vaultManager.collatRatio(noteId);
+    const finalCRFloat = formatNumber(ethers.formatUnits(finalCR, 18), 3);
+    console.log(`Final Collateral Ratio: ${finalCRFloat}`);
+  } catch (error) {
+    console.error(`Error burning DYAD: ${error.message}`);
+  }
+}
+
 async function checkClaimableCommand() {
   const pricer = new Pricer();
   
@@ -796,6 +929,18 @@ async function main() {
   program.command('check-claimable')
     .description('Check how much KEROSENE can be claimed')
     .action(checkClaimableCommand);
+    
+  program.command('mint')
+    .description('Mint DYAD for a note')
+    .argument('<noteId>', 'Note ID to mint DYAD for')
+    .argument('<amount>', 'Amount of DYAD to mint')
+    .action(mintCommand);
+    
+  program.command('burn')
+    .description('Burn DYAD for a note')
+    .argument('<noteId>', 'Note ID to burn DYAD from')
+    .argument('<amount>', 'Amount of DYAD to burn')
+    .action(burnCommand);
 
   program.command('watch')
     .description('Watch for new blocks in real-time')
