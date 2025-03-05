@@ -25,6 +25,7 @@ const VAULT_ADDRESSES = {
 const LOWER_CR = 2.5;
 const TARGET_CR = 2.75;
 const UPPER_CR = 3.0;
+const MIN_CR = 2.0;
 
 const provider = new ethers.JsonRpcProvider(process.env.ALCHEMY_RPC_URL);
 
@@ -357,8 +358,6 @@ async function checkRiskCommand(noteId) {
     console.log('Recommendation: No action needed');
   }
 }
-
-const MIN_CR = 2.0;
 
 async function mintCommand(noteId, amount) {
   if (!wallet) {
