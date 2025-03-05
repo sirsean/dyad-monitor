@@ -396,11 +396,11 @@ async function mintCommand(noteId, amount) {
     
     // Execute mint operation
     console.log(`Minting ${amount} DYAD to note ${noteId}`);
-    //const tx = await vaultManagerWriter.mintDyad(noteId, dyadAmount, wallet.address);
+    const tx = await vaultManagerWriter.mintDyad(noteId, dyadAmount, wallet.address);
     
     // Wait for transaction to complete
-    //const receipt = await tx.wait();
-    //console.log(`Transaction successful: ${receipt.hash}`);
+    const receipt = await tx.wait();
+    console.log(`Transaction successful: ${receipt.hash}`);
     
     // Get new collateral ratio
     const finalCR = await vaultManager.collatRatio(noteId);
