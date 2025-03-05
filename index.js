@@ -419,6 +419,14 @@ async function burnCommand(noteId, amount) {
   // Parse amount to BigInt with 18 decimals
   const dyadAmount = ethers.parseUnits(amount.toString(), 18);
   
+  // Check wallet DYAD balance first
+  const dyadBalance = await dyad.balanceOf(wallet.address);
+  if (dyadBalance < dyadAmount) {
+    console.error(`Insufficient DYAD balance. You have ${ethers.formatUnits(dyadBalance, 18)} DYAD but trying to burn ${amount} DYAD.`);
+    console.log(`Use the 'mint' command first to mint more DYAD to your wallet if needed.`);
+    return;
+  }
+  
   // Get current collateral ratio
   const currentCR = await vaultManager.collatRatio(noteId);
   const currentCRFloat = formatNumber(ethers.formatUnits(currentCR, 18), 3);
@@ -450,17 +458,6 @@ async function burnCommand(noteId, amount) {
   console.log(`After Burn - Estimated Collateral Ratio: ${newCRFloat}`);
   
   try {
-    // Check DYAD balance
-    const dyadBalance = await dyad.balanceOf(wallet.address);
-    
-    // If we don't have enough DYAD, we need to mint it first
-    if (dyadBalance < dyadAmount) {
-      console.log(`Insufficient DYAD balance. Minting ${ethers.formatUnits(dyadAmount - dyadBalance, 18)} DYAD first...`);
-      const vaultManagerWriter = vaultManager.connect(wallet);
-      const mintTx = await vaultManagerWriter.mintDyad(noteId, dyadAmount - dyadBalance, wallet.address);
-      await mintTx.wait();
-    }
-    
     // Approve VaultManager to spend DYAD if needed
     const currentAllowance = await dyad.allowance(wallet.address, VAULT_MANAGER_ADDRESS);
     if (currentAllowance < dyadAmount) {
