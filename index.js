@@ -2,10 +2,10 @@ import { Client, GatewayIntentBits } from 'discord.js';
 import { ethers } from 'ethers';
 import { readFile } from 'fs/promises';
 import { Command } from 'commander';
-import BlockProcessor from './BlockProcessor.js';
-import GraphNote from './GraphNote.js';
-import DailyCheckProcessor from './DailyCheckProcessor.js';
-import ExecutionSchedule from './ExecutionSchedule.js';
+import BlockProcessor from './src/BlockProcessor.js';
+import GraphNote from './src/GraphNote.js';
+import DailyCheckProcessor from './src/DailyCheckProcessor.js';
+import ExecutionSchedule from './src/ExecutionSchedule.js';
 
 const VAULT_MANAGER_ADDRESS = '0xB62bdb1A6AC97A9B70957DD35357311e8859f0d7';
 const KEROSENE_VAULT_ADDRESS = '0x4808e4CC6a2Ba764778A0351E1Be198494aF0b43';

@@ -1,5 +1,5 @@
 
-import ExecutionSchedule from '../ExecutionSchedule.js';
+import ExecutionSchedule from '../src/ExecutionSchedule.js';
 
 // Mock date-fns-tz functions
 jest.mock('date-fns-tz', () => ({
