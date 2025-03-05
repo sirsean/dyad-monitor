@@ -4,6 +4,8 @@ import { readFile } from 'fs/promises';
 import { Command } from 'commander';
 import BlockProcessor from './BlockProcessor.js';
 import GraphNote from './GraphNote.js';
+import DailyCheckProcessor from './DailyCheckProcessor.js';
+import ExecutionSchedule from './ExecutionSchedule.js';
 
 const VAULT_MANAGER_ADDRESS = '0xB62bdb1A6AC97A9B70957DD35357311e8859f0d7';
 const KEROSENE_VAULT_ADDRESS = '0x4808e4CC6a2Ba764778A0351E1Be198494aF0b43';
@@ -453,10 +455,25 @@ async function watchCommand() {
   // Variables to track websocket status
   let wsProvider = null;
   let blockProcessor = null;
+  let dailyCheckProcessor = null;
   let lastBlockTime = Date.now();
   let reconnectAttempt = 0;
   const maxReconnectDelay = 60000; // 1 minute max between reconnections
   let healthCheckInterval = null;
+  let dailyCheckInterval = null;
+  
+  // Initialize the daily check processor with schedule
+  const schedule = new ExecutionSchedule({
+    timeZone: 'America/Chicago',
+    targetHour: 5,
+    targetMinute: 0
+  });
+  
+  dailyCheckProcessor = new DailyCheckProcessor({
+    schedule,
+    noteMessages,
+    noteIds: process.env.NOTE_IDS
+  });
   
   // Function to reconnect with exponential backoff
   const reconnect = async () => {
@@ -497,10 +514,7 @@ async function watchCommand() {
       blockProcessor = new BlockProcessor({
         provider: wsProvider,
         vaultManager,
-        dyad,
-        noteMessages,
-        noteIds: process.env.NOTE_IDS,
-        // Use default schedule (5am CT) if not specified
+        dyad
       });
       
       // Set up event listeners
@@ -559,6 +573,19 @@ async function watchCommand() {
     }
   };
   
+  // Set up daily check interval
+  const checkDailyTasks = async () => {
+    const currentDate = new Date();
+    const messages = await dailyCheckProcessor.checkAndRun(currentDate);
+    
+    // Send messages if there are any
+    if (messages && messages.length > 0) {
+      for (const message of messages) {
+        await notify(message);
+      }
+    }
+  };
+  
   // Health check function to detect stalled connections
   const checkConnectionHealth = async () => {
     const currentTime = Date.now();
@@ -577,8 +604,12 @@ async function watchCommand() {
   // Initial setup
   await setupWebSocketProvider();
   
-  // Set up health check interval
+  // Run the daily check once at startup
+  await checkDailyTasks();
+  
+  // Set up intervals
   healthCheckInterval = setInterval(checkConnectionHealth, 60 * 1000); // Check every minute
+  dailyCheckInterval = setInterval(checkDailyTasks, 60 * 1000); // Check for daily tasks every minute
   
   // Keep the process running
   process.stdin.resume();
@@ -587,9 +618,13 @@ async function watchCommand() {
   process.on('SIGINT', async () => {
     console.log('Stopping block watcher...');
     
-    // Clear health check interval
+    // Clear intervals
     if (healthCheckInterval) {
       clearInterval(healthCheckInterval);
+    }
+    
+    if (dailyCheckInterval) {
+      clearInterval(dailyCheckInterval);
     }
     
     // Clean up Discord client when watch command is interrupted
