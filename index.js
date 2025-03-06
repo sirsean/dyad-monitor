@@ -1,26 +1,4 @@
-// utils.js
-import { ethers } from 'ethers';
 
-export async function openContract(address, abiFilename, provider) {
-  const abi = await import(`../${abiFilename}`); // Adjust path as needed
-  return new ethers.Contract(address, abi.default, provider); // Assuming abi is a default export. Adjust if not.
-}
-
-export async function fetchRewards(noteId) {
-  return fetch(`https://api.dyadstable.xyz/api/rewards/${noteId}`)
-    .then(response => response.json());
-}
-
-export async function fetchYield(noteId) {
-  return fetch(`https://api.dyadstable.xyz/api/yields/${noteId}`)
-    .then(response => response.json());
-}
-
-export function formatNumber(numberString, decimalPlaces = 0) {
-  const number = parseFloat(numberString);
-  const factor = Math.pow(10, decimalPlaces);
-  return Math.round(number * factor) / factor;
-}
 
 
 // index.js
@@ -33,7 +11,7 @@ import DailyCheckProcessor from './src/DailyCheckProcessor.js';
 import ExecutionSchedule from './src/ExecutionSchedule.js';
 import Pricer from './src/Pricer.js';
 import discordClient from './src/Discord.js';
-import * as utils from './utils.js'; // Import the utils module
+import * as utils from './src/utils.js'; // Import the utils module from src directory
 
 const VAULT_MANAGER_ADDRESS = '0xB62bdb1A6AC97A9B70957DD35357311e8859f0d7';
 const KEROSENE_VAULT_ADDRESS = '0x4808e4CC6a2Ba764778A0351E1Be198494aF0b43';
