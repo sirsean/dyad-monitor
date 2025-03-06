@@ -324,7 +324,7 @@ async function burnCommand(noteId, amount) {
 
   const dyadAmount = ethers.parseUnits(amount.toString(), 18);
   const wallet = walletInstance.getWallet();
-  
+
   const dyadBalance = await dyad.balanceOf(wallet.address);
   if (dyadBalance < dyadAmount) {
     console.error(`Insufficient DYAD balance. You have ${ethers.formatUnits(dyadBalance, 18)} DYAD but trying to burn ${amount} DYAD.`);
