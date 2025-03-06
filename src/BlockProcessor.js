@@ -1,4 +1,3 @@
-
 import { ethers } from 'ethers';
 import GraphNote from './GraphNote.js';
 
