@@ -2,7 +2,7 @@ import { Client, GatewayIntentBits } from 'discord.js';
 import { ethers } from 'ethers';
 import { readFile } from 'fs/promises';
 import { Command } from 'commander';
-import BlockProcessor from './src/BlockProcessor.js';
+import LiquidationMonitor from './src/LiquidationMonitor.js';
 import GraphNote from './src/GraphNote.js';
 import DailyCheckProcessor from './src/DailyCheckProcessor.js';
 import ExecutionSchedule from './src/ExecutionSchedule.js';
@@ -597,8 +597,8 @@ async function watchCommand() {
     targetMinute: 0
   });
   
-  // Create block processor with HTTP provider instead of WebSocket
-  blockProcessor = new BlockProcessor({
+  // Create liquidation monitor with HTTP provider
+  blockProcessor = new LiquidationMonitor({
     provider,
     vaultManager,
     dyad

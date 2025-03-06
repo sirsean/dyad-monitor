@@ -1,7 +1,8 @@
+
 import { ethers } from 'ethers';
 import GraphNote from './GraphNote.js';
 
-class BlockProcessor {
+class LiquidationMonitor {
   constructor({
     provider,
     vaultManager,
@@ -74,4 +75,4 @@ class BlockProcessor {
   }
 }
 
-export default BlockProcessor;
+export default LiquidationMonitor;
