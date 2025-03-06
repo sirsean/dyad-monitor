@@ -45,7 +45,7 @@ async function initializeContracts() {
 const notify = message => discordClient.notify(message);
 
 async function estimateClaim() {
-  if (!wallet) {
+  if (!walletInstance.isInitialized()) {
     throw new Error("Wallet not initialized");
   }
 
@@ -100,7 +100,7 @@ async function estimateClaim() {
 }
 
 async function claim() {
-  if (!wallet) {
+  if (!walletInstance.isInitialized()) {
     throw new Error('Wallet not initialized');
   }
 
