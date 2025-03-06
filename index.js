@@ -75,7 +75,7 @@ async function estimateClaim() {
       claimableMp,
     };
   } else {
-    const dyadLpStakingFactoryWriter = dyadLpStakingFactory.connect(wallet);
+    const dyadLpStakingFactoryWriter = dyadLpStakingFactory.connect(walletInstance.getWallet()); // UPDATED
     try {
       const gasEstimate =
         await dyadLpStakingFactoryWriter.claimToVault.estimateGas(
@@ -116,7 +116,7 @@ async function claim() {
   const amount = rewards.amount;
   const proof = rewards.proof;
 
-  const dyadLpStakingFactoryWriter = dyadLpStakingFactory.connect(wallet);
+  const dyadLpStakingFactoryWriter = dyadLpStakingFactory.connect(walletInstance.getWallet()); // UPDATED
   await dyadLpStakingFactoryWriter.claimToVault(noteId, amount, proof)
     .then(tx => tx.wait());
 }
@@ -438,7 +438,7 @@ async function checkClaimableCommand() {
 
   if (claimable > 0 && wallet) {
     try {
-      const dyadLpStakingFactoryWriter = dyadLpStakingFactory.connect(wallet);
+      const dyadLpStakingFactoryWriter = dyadLpStakingFactory.connect(walletInstance.getWallet()); // UPDATED
       const gasEstimate = await dyadLpStakingFactoryWriter.claimToVault.estimateGas(
         noteId,
         rewards.amount,
