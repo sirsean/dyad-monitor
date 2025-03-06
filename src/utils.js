@@ -1,5 +1,5 @@
-
 import { ethers } from 'ethers';
+import { readFile } from 'fs/promises';
 
 /**
  * Fetch rewards data for a specific note ID
@@ -41,7 +41,6 @@ export function formatNumber(numberString, decimalPlaces = 0) {
  * @returns {Promise<ethers.Contract>} - Ethers contract instance
  */
 export async function openContract(address, abiFilename, provider) {
-  const { readFile } = await import('fs/promises');
   return readFile(abiFilename, 'utf8')
     .then(JSON.parse)
     .then(abi => new ethers.Contract(address, abi, provider));
