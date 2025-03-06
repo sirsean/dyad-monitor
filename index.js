@@ -35,10 +35,6 @@ let keroseneVault;
 let dyadLpStakingFactory;
 let dyad;
 
-async function initializeWallet() {
-  await walletInstance.initialize(provider);
-}
-
 async function initializeContracts() {
   vaultManager = await openContract(VAULT_MANAGER_ADDRESS, 'abi/VaultManagerV5.json', provider);
   keroseneVault = await openContract(KEROSENE_VAULT_ADDRESS, 'abi/KeroseneVault.json', provider);
@@ -659,7 +655,7 @@ async function liquidateNote(noteId, dyadAmount) {
 }
 
 async function main() {
-  await initializeWallet();
+  await walletInstance.initialize(provider);
   await initializeContracts();
 
   const discordInitialized = await discordClient.initialize();
