@@ -555,7 +555,7 @@ async function checkVault(asset) {
 }
 
 async function claimCommand() {
-  if (!wallet) {
+  if (!walletInstance.isInitialized()) {
     throw new Error('Wallet not initialized');
   }
 
