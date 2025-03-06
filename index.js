@@ -564,11 +564,7 @@ async function watchCommand() {
       const messages = await blockProcessor.fetchLiquidatableNotes();
       
       // Send messages if there are any
-      if (messages && messages.length > 0) {
-        for (const message of messages) {
-          await notify(message);
-        }
-      }
+      await discordClient.notifyAll(messages);
     } catch (error) {
       console.error('Error checking for liquidatable notes:', error.message);
       await notify(`Error checking for liquidatable notes: ${error.message}`);
@@ -581,11 +577,7 @@ async function watchCommand() {
     const messages = await dailyCheckProcessor.checkAndRun(currentDate);
     
     // Send messages if there are any
-    if (messages && messages.length > 0) {
-      for (const message of messages) {
-        await notify(message);
-      }
-    }
+    await discordClient.notifyAll(messages);
   };
   
   // Run the initial checks

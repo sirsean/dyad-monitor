@@ -64,6 +64,16 @@ class Discord {
       console.log(message); // Fallback to logging the message
     }
   }
+  
+  async notifyAll(messages) {
+    if (!messages || messages.length === 0) {
+      return;
+    }
+    
+    for (const message of messages) {
+      await this.notify(message);
+    }
+  }
 
   async destroy() {
     if (this.client) {
