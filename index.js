@@ -1,9 +1,4 @@
-
-
-
-// index.js
 import { ethers } from 'ethers';
-import { readFile } from 'fs/promises';
 import { Command } from 'commander';
 import LiquidationMonitor from './src/LiquidationMonitor.js';
 import GraphNote from './src/GraphNote.js';
