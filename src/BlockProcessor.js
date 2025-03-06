@@ -10,43 +10,6 @@ class BlockProcessor {
     this.provider = provider;
     this.vaultManager = vaultManager;
     this.dyad = dyad;
-
-    // State tracking
-    this.lastNotesFetch = 0;
-  }
-
-  async processBlock(blockNumber) {
-    let messages = [];
-
-    try {
-      const block = await this.provider.getBlock(blockNumber);
-      const feeData = await this.provider.getFeeData();
-
-      const blockTimestamp = block.timestamp * 1000; // Convert to milliseconds
-      const currentDate = new Date(blockTimestamp);
-      const timestamp = currentDate.toISOString();
-      const gasPrice = ethers.formatUnits(feeData.gasPrice || 0, 'gwei');
-
-      console.log(`Block #${blockNumber} | Time: ${timestamp} | Gas: ${gasPrice} gwei`);
-
-      // Check for liquidatable notes if it's time
-      const liquidatableMessages = await this.checkForLiquidatableNotes(blockTimestamp);
-      messages = messages.concat(liquidatableMessages);
-
-      return messages;
-    } catch (error) {
-      console.error(`Error processing block ${blockNumber}:`, error.message);
-      return [`Error processing block ${blockNumber}: ${error.message}`];
-    }
-  }
-
-  async checkForLiquidatableNotes(blockTimestamp) {
-    // Check for liquidatable notes every ~1 minute
-    if (blockTimestamp - this.lastNotesFetch > 60 * 1000) {
-      this.lastNotesFetch = blockTimestamp;
-      return await this.fetchLiquidatableNotes();
-    }
-    return [];
   }
 
   async fetchLiquidatableNotes() {
