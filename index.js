@@ -1,4 +1,3 @@
-import { Client, GatewayIntentBits } from 'discord.js';
 import { ethers } from 'ethers';
 import { readFile } from 'fs/promises';
 import { Command } from 'commander';
@@ -7,6 +6,7 @@ import GraphNote from './src/GraphNote.js';
 import DailyCheckProcessor from './src/DailyCheckProcessor.js';
 import ExecutionSchedule from './src/ExecutionSchedule.js';
 import Pricer from './src/Pricer.js';
+import discordClient from './src/Discord.js';
 
 const VAULT_MANAGER_ADDRESS = '0xB62bdb1A6AC97A9B70957DD35357311e8859f0d7';
 const KEROSENE_VAULT_ADDRESS = '0x4808e4CC6a2Ba764778A0351E1Be198494aF0b43';
@@ -34,7 +34,6 @@ let vaultManager;
 let keroseneVault;
 let dyadLpStakingFactory;
 let dyad;
-let discord;
 
 async function openContract(address, abiFilename) {
   return readFile(abiFilename, 'utf8')
@@ -55,63 +54,10 @@ async function initializeContracts() {
   dyad = await openContract(DYAD_ADDRESS, 'abi/Dyad.json');
 }
 
-async function initializeDiscord() {
-  try {
-    if (!process.env.DISCORD_APP_TOKEN) {
-      console.error('DISCORD_APP_TOKEN is not set in environment variables');
-      return false;
-    }
-    
-    discord = new Client({
-      intents: [GatewayIntentBits.Guilds],
-    });
+// Discord client is initialized in the Discord module
 
-    discord.on('error', (error) => {
-      console.error('Discord client error:', error.message);
-    });
-
-    await discord.login(process.env.DISCORD_APP_TOKEN);
-    console.log(`Logged in as ${discord.user.tag}!`);
-    return true;
-  } catch (error) {
-    console.error('Failed to initialize Discord client:', error.message);
-    return false;
-  }
-}
-
-async function notify(message) {
-  if (process.env.NODE_ENV == 'dev') {
-    console.log(message);
-  } else {
-    try {
-      // Check if Discord client is ready
-      if (!discord) {
-        console.error('Discord client is not ready. Token may not be set.');
-        console.log(message); // Fallback to logging the message
-        return;
-      }
-      
-      // Verify token is set
-      if (!process.env.DISCORD_APP_TOKEN) {
-        console.error('DISCORD_APP_TOKEN is not set in environment variables');
-        console.log(message); // Fallback to logging the message
-        return;
-      }
-      
-      const channel = await discord.channels.fetch(process.env.DISCORD_CHANNEL_ID);
-      if (!channel) {
-        console.error(`Could not find Discord channel with ID: ${process.env.DISCORD_CHANNEL_ID}`);
-        console.log(message); // Fallback to logging the message
-        return;
-      }
-      
-      await channel.send(`\`\`\`>> DYAD Monitor\n===\n${message}\`\`\``);
-    } catch (error) {
-      console.error('Error sending Discord notification:', error.message);
-      console.log(message); // Fallback to logging the message
-    }
-  }
-}
+// Use the discordClient notify method instead of direct implementation
+const notify = message => discordClient.notify(message);
 
 async function fetchRewards(noteId) {
   return fetch(`https://api.dyadstable.xyz/api/rewards/${noteId}`)
@@ -668,7 +614,7 @@ async function watchCommand() {
     
     // Clean up Discord client when watch command is interrupted
     console.log('Cleaning up Discord client...');
-    await discord.destroy();
+    await discordClient.destroy();
     
     console.log('Cleanup complete, exiting...');
     process.exit(0);
@@ -797,7 +743,7 @@ async function main() {
   await initializeWallet();
   await initializeContracts();
   
-  const discordInitialized = await initializeDiscord();
+  const discordInitialized = await discordClient.initialize();
   if (!discordInitialized) {
     console.warn('Discord client failed to initialize. Notifications will be logged to console only.');
   }
@@ -882,7 +828,7 @@ async function main() {
 
   // Only cleanup Discord client if we're NOT running the watch command
   if (!isWatchCommand) {
-    await discord.destroy();
+    await discordClient.destroy();
   }
 }
 
