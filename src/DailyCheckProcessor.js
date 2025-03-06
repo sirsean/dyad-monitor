@@ -29,7 +29,7 @@ class DailyCheckProcessor {
   async runDailyNoteCheck(currentDate) {
     console.log('Running daily note check...');
     try {
-      // Get the first note ID from the environment variable
+      // Get the first note ID from the provided list
       const firstNoteId = this.noteIds.split(',')[0];
       console.log(`Checking note ID: ${firstNoteId}`);
 

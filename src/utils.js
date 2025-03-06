@@ -2,6 +2,23 @@ import { ethers } from 'ethers';
 import { readFile } from 'fs/promises';
 
 /**
+ * Get all note IDs from environment variable
+ * @returns {string[]} - Array of note IDs
+ */
+export function getNoteIds() {
+  return process.env.NOTE_IDS?.split(',') || [];
+}
+
+/**
+ * Get the first note ID from environment variable
+ * @returns {string|undefined} - First note ID or undefined if none exists
+ */
+export function getFirstNoteId() {
+  const noteIds = getNoteIds();
+  return noteIds.length > 0 ? noteIds[0] : undefined;
+}
+
+/**
  * Fetch rewards data for a specific note ID
  * @param {string} noteId - The note ID to fetch rewards for
  * @returns {Promise<Object>} - Rewards data including amount and proof

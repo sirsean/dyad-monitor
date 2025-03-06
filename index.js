@@ -7,7 +7,7 @@ import ExecutionSchedule from './src/ExecutionSchedule.js';
 import Pricer from './src/Pricer.js';
 import discordClient from './src/Discord.js';
 import walletInstance from './src/Wallet.js';
-import { openContract, fetchRewards, fetchYield, formatNumber } from './src/utils.js';
+import { openContract, fetchRewards, fetchYield, formatNumber, getNoteIds, getFirstNoteId } from './src/utils.js';
 
 const VAULT_MANAGER_ADDRESS = '0xB62bdb1A6AC97A9B70957DD35357311e8859f0d7';
 const KEROSENE_VAULT_ADDRESS = '0x4808e4CC6a2Ba764778A0351E1Be198494aF0b43';
@@ -51,7 +51,7 @@ async function estimateClaim() {
 
   const pricer = new Pricer();
 
-  const noteId = process.env.NOTE_IDS.split(",")[0];
+  const noteId = getFirstNoteId();
   const rewards = await fetchRewards(noteId);
   const claimed = await dyadLpStakingFactory.noteIdToTotalClaimed(noteId);
 
@@ -104,7 +104,7 @@ async function claim() {
     throw new Error('Wallet not initialized');
   }
 
-  const noteId = process.env.NOTE_IDS.split(',')[0];
+  const noteId = getFirstNoteId();
   const rewards = await fetchRewards(noteId);
 
   const amount = rewards.amount;
@@ -199,7 +199,7 @@ async function noteMessages(noteId) {
 }
 
 async function monitorCommand() {
-  const noteIds = process.env.NOTE_IDS.split(',');
+  const noteIds = getNoteIds();
   const messages = [];
   for (const noteId of noteIds) {
     await noteMessages(noteId)
@@ -392,7 +392,7 @@ async function balanceCommand() {
     const walletBalance = await dyad.balanceOf(wallet.address);
     console.log(`Wallet DYAD Balance: ${ethers.formatUnits(walletBalance, 18)} DYAD`);
 
-    const noteIds = process.env.NOTE_IDS.split(',');
+    const noteIds = getNoteIds();
     console.log('\nMinted DYAD by Note:');
 
     for (const noteId of noteIds) {
@@ -490,7 +490,7 @@ async function watchCommand() {
   dailyCheckProcessor = new DailyCheckProcessor({
     schedule,
     noteMessages,
-    noteIds: process.env.NOTE_IDS
+    noteIds: getNoteIds().join(',')
   });
 
   const checkLiquidatableNotes = async () => {
@@ -541,7 +541,7 @@ async function watchCommand() {
 }
 
 async function checkVault(asset) {
-  const noteId = process.env.NOTE_IDS.split(',')[0];
+  const noteId = getFirstNoteId();
 
   const vaultAddress = VAULT_ADDRESSES[asset];
   if (!vaultAddress) {
@@ -577,7 +577,7 @@ async function withdrawFromVault(asset, amount) {
     throw new Error(`Unknown asset: ${asset}. Available assets: ${Object.keys(VAULT_ADDRESSES).join(', ')}`);
   }
 
-  const noteId = process.env.NOTE_IDS.split(',')[0];
+  const noteId = getFirstNoteId();
   const parsedAmount = ethers.parseUnits(amount, 18);
   const wallet = walletInstance.getWallet();
 
@@ -609,7 +609,7 @@ async function liquidateNote(noteId, dyadAmount) {
     return;
   }
 
-  const targetNoteId = process.env.NOTE_IDS.split(',')[0];
+  const targetNoteId = getFirstNoteId();
 
   console.log(`Attempting to liquidate ${dyadAmount} DYAD from note ${noteId}`);
   const cr = await vaultManager.collatRatio(noteId);
