@@ -6,6 +6,7 @@ import DailyCheckProcessor from './src/DailyCheckProcessor.js';
 import ExecutionSchedule from './src/ExecutionSchedule.js';
 import Pricer from './src/Pricer.js';
 import discordClient from './src/Discord.js';
+import walletInstance from './src/Wallet.js';
 import { openContract, fetchRewards, fetchYield, formatNumber } from './src/utils.js';
 
 const VAULT_MANAGER_ADDRESS = '0xB62bdb1A6AC97A9B70957DD35357311e8859f0d7';
@@ -29,16 +30,13 @@ const MIN_CR = 2.0;
 
 const provider = new ethers.JsonRpcProvider(process.env.ALCHEMY_RPC_URL);
 
-let wallet;
 let vaultManager;
 let keroseneVault;
 let dyadLpStakingFactory;
 let dyad;
 
 async function initializeWallet() {
-  if (process.env.PRIVATE_KEY) {
-    wallet = new ethers.Wallet(process.env.PRIVATE_KEY, provider);
-  }
+  await walletInstance.initialize(provider);
 }
 
 async function initializeContracts() {
@@ -280,7 +278,7 @@ async function checkRiskCommand(noteId) {
 }
 
 async function mintCommand(noteId, amount) {
-  if (!wallet) {
+  if (!walletInstance.isInitialized()) {
     throw new Error("Wallet not initialized");
   }
 
@@ -306,6 +304,7 @@ async function mintCommand(noteId, amount) {
   }
 
   try {
+    const wallet = walletInstance.getWallet();
     const vaultManagerWriter = vaultManager.connect(wallet);
 
     console.log(`Minting ${amount} DYAD to note ${noteId}`);
@@ -323,12 +322,13 @@ async function mintCommand(noteId, amount) {
 }
 
 async function burnCommand(noteId, amount) {
-  if (!wallet) {
+  if (!walletInstance.isInitialized()) {
     throw new Error("Wallet not initialized");
   }
 
   const dyadAmount = ethers.parseUnits(amount.toString(), 18);
-
+  const wallet = walletInstance.getWallet();
+  
   const dyadBalance = await dyad.balanceOf(wallet.address);
   if (dyadBalance < dyadAmount) {
     console.error(`Insufficient DYAD balance. You have ${ethers.formatUnits(dyadBalance, 18)} DYAD but trying to burn ${amount} DYAD.`);
@@ -387,11 +387,12 @@ async function burnCommand(noteId, amount) {
 }
 
 async function balanceCommand() {
-  if (!wallet) {
+  if (!walletInstance.isInitialized()) {
     throw new Error("Wallet not initialized");
   }
 
   try {
+    const wallet = walletInstance.getWallet();
     const walletBalance = await dyad.balanceOf(wallet.address);
     console.log(`Wallet DYAD Balance: ${ethers.formatUnits(walletBalance, 18)} DYAD`);
 
@@ -436,7 +437,7 @@ async function checkClaimableCommand() {
   console.log(`MP value: $${formatNumber(mpValueUSD, 2)}`);
   console.log(`DV value: $${formatNumber(dvValueUSD, 2)}`);
 
-  if (claimable > 0 && wallet) {
+  if (claimable > 0 && walletInstance.isInitialized()) {
     try {
       const dyadLpStakingFactoryWriter = dyadLpStakingFactory.connect(walletInstance.getWallet()); // UPDATED
       const gasEstimate = await dyadLpStakingFactoryWriter.claimToVault.estimateGas(
@@ -571,7 +572,7 @@ async function claimCommand() {
 }
 
 async function withdrawFromVault(asset, amount) {
-  if (!wallet) {
+  if (!walletInstance.isInitialized()) {
     throw new Error('Wallet not initialized');
   }
 
@@ -582,6 +583,7 @@ async function withdrawFromVault(asset, amount) {
 
   const noteId = process.env.NOTE_IDS.split(',')[0];
   const parsedAmount = ethers.parseUnits(amount, 18);
+  const wallet = walletInstance.getWallet();
 
   console.log(`Withdrawing ${amount} ${asset} from note ${noteId}`);
 
@@ -623,11 +625,12 @@ async function liquidateNote(noteId, dyadAmount) {
     return;
   }
 
-  if (!wallet) {
+  if (!walletInstance.isInitialized()) {
     console.error('Wallet not initialized');
     return;
   }
 
+  const wallet = walletInstance.getWallet();
   const vaultManagerWriter = vaultManager.connect(wallet);
 
   const dyadBalance = await dyad.balanceOf(wallet.address);
