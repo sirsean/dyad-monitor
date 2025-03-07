@@ -33,8 +33,6 @@ class RewardMessageGenerator extends NoteMessageGenerator {
   async generate(noteId) {
     const messages = [];
     
-    const pricer = new Pricer();
-    const mp = await pricer.getPrice('KEROSENE');
     const dv = await this.keroseneVault.assetPrice().then(r => parseFloat(r) * 10 ** -8);
     
     const { claimable, claimableMp, percentage, gas, usdGasCost } = await this.estimateClaim(noteId);
