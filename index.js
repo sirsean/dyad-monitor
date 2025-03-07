@@ -90,7 +90,7 @@ async function noteMessages(noteId) {
     provider,
     wallet: walletInstance
   });
-  
+
   const { claimable, claimableMp, percentage, gas, usdGasCost } = await rewardMessageGenerator.estimateClaim(noteId);
 
   const claimableDv = parseFloat(claimable) * 10 ** -18 * dv;
@@ -366,7 +366,7 @@ async function checkClaimableCommand() {
     provider,
     wallet: walletInstance
   });
-  
+
   const { claimable, claimableMp, gas, usdGasCost, percentage } = await rewardMessageGenerator.estimateClaim(noteId);
   const claimableFormatted = ethers.formatUnits(claimable, 18);
 
