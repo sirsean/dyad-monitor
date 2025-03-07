@@ -33,8 +33,8 @@ class DailyCheckProcessor {
       const firstNoteId = this.noteIds.split(',')[0];
       console.log(`Checking note ID: ${firstNoteId}`);
 
-      // Call noteMessages for the first note
-      const message = await this.noteMessages(firstNoteId);
+      // Call noteMessages for the first note with shouldClaim=true
+      const message = await this.noteMessages(firstNoteId, true);
 
       console.log('Daily note check completed.');
       // Return the message instead of sending it directly

@@ -71,7 +71,7 @@ async function lookupRisk(noteId) {
   return RiskMessageGenerator.lookupRisk(noteId, vaultManager, dyad);
 }
 
-async function noteMessages(noteId) {
+async function noteMessages(noteId, shouldClaim = false) {
   // Create individual message generators
   const basicInfoGenerator = new BasicInfoMessageGenerator();
   
@@ -85,7 +85,7 @@ async function noteMessages(noteId) {
     keroseneVault,
     provider,
     wallet: walletInstance,
-    shouldClaim: true // Can be toggled to false to prevent claiming
+    shouldClaim: shouldClaim // Use the shouldClaim parameter
   });
   
   const lpPositionGenerator = new LpPositionMessageGenerator({
@@ -120,7 +120,7 @@ async function monitorCommand() {
   const noteIds = getNoteIds();
   const messages = [];
   for (const noteId of noteIds) {
-    await noteMessages(noteId)
+    await noteMessages(noteId, false) // Pass false to prevent claiming during monitoring
       .then(message => messages.push(message))
       .catch(err => {
         console.error(err);
