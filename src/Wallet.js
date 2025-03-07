@@ -12,7 +12,7 @@ class Wallet {
    * @param {ethers.Provider} provider - Ethers provider
    * @returns {boolean} - Whether initialization was successful
    */
-  async initialize(provider) {
+  initialize(provider) {
     this.provider = provider;
     
     if (process.env.PRIVATE_KEY) {
