@@ -27,14 +27,6 @@ export const UPPER_CR = 3.0;
 export const MIN_CR = 2.0; //Added MIN_CR constant
 
 
-// Format a number to a specific number of decimal places
-export const formatNumber = (num, decimals = 2) => {
-  return Number(num).toLocaleString('en-US', {
-    minimumFractionDigits: 0,
-    maximumFractionDigits: decimals,
-  });
-};
-
 export default {
   ADDRESSES,
   VAULT_ADDRESSES,
@@ -43,5 +35,4 @@ export default {
   LOWER_CR,
   UPPER_CR,
   MIN_CR,
-  formatNumber,
 };

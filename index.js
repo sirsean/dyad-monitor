@@ -7,8 +7,8 @@ import ExecutionSchedule from './src/ExecutionSchedule.js';
 import Pricer from './src/Pricer.js';
 import discordClient from './src/Discord.js';
 import walletInstance from './src/Wallet.js';
-import { openContract, fetchRewards, fetchYield, getNoteIds, getFirstNoteId } from './src/utils.js';
-import { ADDRESSES, VAULT_ADDRESSES, LP_TOKENS, TARGET_CR, LOWER_CR, UPPER_CR, MIN_CR, formatNumber } from './src/constants.js';
+import { openContract, fetchRewards, fetchYield, getNoteIds, getFirstNoteId, formatNumber } from './src/utils.js';
+import { ADDRESSES, VAULT_ADDRESSES, LP_TOKENS, TARGET_CR, LOWER_CR, UPPER_CR, MIN_CR } from './src/constants.js';
 
 const provider = new ethers.JsonRpcProvider(process.env.ALCHEMY_RPC_URL);
 
