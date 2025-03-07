@@ -8,7 +8,7 @@ import Pricer from './src/Pricer.js';
 import discordClient from './src/Discord.js';
 import walletInstance from './src/Wallet.js';
 import { openContract, fetchRewards, fetchYield, getNoteIds, getFirstNoteId } from './src/utils.js';
-import { ADDRESSES, VAULT_ADDRESSES, LP_TOKENS, CR, formatNumber } from './src/constants.js';
+import { ADDRESSES, VAULT_ADDRESSES, LP_TOKENS, TARGET_CR, LOWER_CR, UPPER_CR, MIN_CR, formatNumber } from './src/constants.js';
 
 const provider = new ethers.JsonRpcProvider(process.env.ALCHEMY_RPC_URL);
 
@@ -103,16 +103,16 @@ async function lookupRisk(noteId) {
 
   const totalValue = await vaultManager.getTotalValue(noteId);
   const mintedDyad = await dyad.mintedDyad(noteId);
-  const targetDebt = parseFloat(ethers.formatUnits(totalValue, 18)) / CR.TARGET;
+  const targetDebt = parseFloat(ethers.formatUnits(totalValue, 18)) / TARGET_CR;
 
   const dyadToBurn = parseFloat(ethers.formatUnits(mintedDyad, 18)) - targetDebt;
   const dyadToMint = targetDebt - parseFloat(ethers.formatUnits(mintedDyad, 18));
 
   return {
     cr,
-    shouldMint: crFloat > CR.UPPER,
+    shouldMint: crFloat > UPPER_CR,
     dyadToMint,
-    shouldBurn: crFloat < CR.LOWER,
+    shouldBurn: crFloat < LOWER_CR,
     dyadToBurn,
   }
 }
@@ -276,8 +276,8 @@ async function mintCommand(noteId, amount) {
 
   console.log(`After Mint - Estimated Collateral Ratio: ${newCRFloat}`);
 
-  if (newCRFloat < CR.MIN) {
-    console.error(`Cannot mint: Collateral ratio ${newCRFloat} would go below ${CR.MIN}`);
+  if (newCRFloat < MIN_CR) {
+    console.error(`Cannot mint: Collateral ratio ${newCRFloat} would go below ${MIN_CR}`);
     return;
   }
 
