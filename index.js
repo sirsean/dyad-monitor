@@ -9,6 +9,7 @@ import discordClient from './src/Discord.js';
 import walletInstance from './src/Wallet.js';
 import { openContract, fetchRewards, fetchYield, getNoteIds, getFirstNoteId, formatNumber } from './src/utils.js';
 import { ADDRESSES, VAULT_ADDRESSES, LP_TOKENS, TARGET_CR, LOWER_CR, UPPER_CR, MIN_CR } from './src/constants.js';
+import RewardMessageGenerator from './src/message_generators/RewardMessageGenerator.js';
 
 const provider = new ethers.JsonRpcProvider(process.env.ALCHEMY_RPC_URL);
 
@@ -31,54 +32,15 @@ async function estimateClaim() {
     throw new Error("Wallet not initialized");
   }
 
-  const pricer = new Pricer();
+  const rewardMessageGenerator = new RewardMessageGenerator({
+    dyadLpStakingFactory,
+    keroseneVault,
+    provider,
+    wallet: walletInstance
+  });
 
   const noteId = getFirstNoteId();
-  const rewards = await fetchRewards(noteId);
-  const claimed = await dyadLpStakingFactory.noteIdToTotalClaimed(noteId);
-
-  const amount = rewards.amount;
-  const proof = rewards.proof;
-
-  const claimable = BigInt(amount) - claimed;
-  const mp = await pricer.getPrice("KEROSENE");
-  const claimableMp = parseFloat(claimable) * 10 ** -18 * mp;
-  const ethPrice = await pricer.getPrice("ETH");
-
-  if (claimable == 0) {
-    return {
-      claimable,
-      claimableMp,
-    };
-  } else {
-    const dyadLpStakingFactoryWriter = dyadLpStakingFactory.connect(walletInstance.getWallet()); // UPDATED
-    try {
-      const gasEstimate =
-        await dyadLpStakingFactoryWriter.claimToVault.estimateGas(
-          noteId,
-          amount,
-          proof,
-        );
-      const gasPrice = await provider.getFeeData().then((d) => d.gasPrice);
-      const gas = gasEstimate * gasPrice;
-      const usdGasCost = parseFloat(gas) * 10 ** -18 * ethPrice;
-      const percentage = usdGasCost / claimableMp;
-
-      return {
-        claimable,
-        claimableMp,
-        gas,
-        usdGasCost,
-        percentage,
-      };
-    } catch (err) {
-      console.error(err);
-      return {
-        claimable,
-        claimableMp,
-      };
-    }
-  }
+  return rewardMessageGenerator.estimateClaim(noteId);
 }
 
 async function claim() {
@@ -86,15 +48,15 @@ async function claim() {
     throw new Error('Wallet not initialized');
   }
 
+  const rewardMessageGenerator = new RewardMessageGenerator({
+    dyadLpStakingFactory,
+    keroseneVault,
+    provider,
+    wallet: walletInstance
+  });
+
   const noteId = getFirstNoteId();
-  const rewards = await fetchRewards(noteId);
-
-  const amount = rewards.amount;
-  const proof = rewards.proof;
-
-  const dyadLpStakingFactoryWriter = dyadLpStakingFactory.connect(walletInstance.getWallet()); // UPDATED
-  await dyadLpStakingFactoryWriter.claimToVault(noteId, amount, proof)
-    .then(tx => tx.wait());
+  await rewardMessageGenerator.claim(noteId);
 }
 
 async function lookupRisk(noteId) {
@@ -136,14 +98,21 @@ async function noteMessages(noteId) {
   const noteXp = y[Object.keys(y)[0]]?.noteXp;
   messages.push(`XP: ${formatNumber(noteXp, 2)}`);
 
-  const { claimable, claimableMp, percentage, gas, usdGasCost } = await estimateClaim();
+  const rewardMessageGenerator = new RewardMessageGenerator({
+    dyadLpStakingFactory,
+    keroseneVault,
+    provider,
+    wallet: walletInstance
+  });
+  
+  const { claimable, claimableMp, percentage, gas, usdGasCost } = await rewardMessageGenerator.estimateClaim(noteId);
 
   const claimableDv = parseFloat(claimable) * 10 ** -18 * dv;
 
   if (claimable > 0) {
     if (percentage < 0.01) {
       messages.push(`Claiming ${formatNumber(ethers.formatUnits(claimable, 18))} KERO ($${formatNumber(claimableMp, 2)}/$${formatNumber(claimableDv, 2)}) for ${ethers.formatEther(gas)} ETH ($${formatNumber(usdGasCost, 2)})`);
-      await claim();
+      await rewardMessageGenerator.claim(noteId);
     } else if (gas) {
       messages.push(`Claimable: ${formatNumber(ethers.formatUnits(claimable, 18))} KERO ($${formatNumber(claimableMp, 2)}/$${formatNumber(claimableDv, 2)}), not worth ${ethers.formatEther(gas)} ETH ($${formatNumber(usdGasCost, 2)}) gas`);
     } else {
@@ -405,46 +374,37 @@ async function checkClaimableCommand() {
   const claimed = await dyadLpStakingFactory.noteIdToTotalClaimed(noteId);
   console.log(`Amount already claimed: ${ethers.formatUnits(claimed, 18)} KERO`);
 
-  const claimable = BigInt(rewards.amount) - claimed;
+  const rewardMessageGenerator = new RewardMessageGenerator({
+    dyadLpStakingFactory,
+    keroseneVault,
+    provider,
+    wallet: walletInstance
+  });
+  
+  const { claimable, claimableMp, gas, usdGasCost, percentage } = await rewardMessageGenerator.estimateClaim(noteId);
   const claimableFormatted = ethers.formatUnits(claimable, 18);
 
-  const mpValueUSD = parseFloat(claimableFormatted) * mpPrice;
   const dvValueUSD = parseFloat(claimableFormatted) * dvPrice;
 
   console.log(`\nClaimable amount: ${claimableFormatted} KERO`);
-  console.log(`MP value: $${formatNumber(mpValueUSD, 2)}`);
+  console.log(`MP value: $${formatNumber(claimableMp, 2)}`);
   console.log(`DV value: $${formatNumber(dvValueUSD, 2)}`);
 
-  if (claimable > 0 && walletInstance.isInitialized()) {
-    try {
-      const dyadLpStakingFactoryWriter = dyadLpStakingFactory.connect(walletInstance.getWallet()); // UPDATED
-      const gasEstimate = await dyadLpStakingFactoryWriter.claimToVault.estimateGas(
-        noteId,
-        rewards.amount,
-        rewards.proof
-      );
-      const gasPrice = await provider.getFeeData().then((d) => d.gasPrice);
-      const gas = gasEstimate * gasPrice;
-      const ethPrice = await pricer.getPrice("ETH");
-      const usdGasCost = parseFloat(gas) * 10 ** -18 * ethPrice;
-      const percentage = usdGasCost / mpValueUSD;
+  if (claimable > 0 && walletInstance.isInitialized() && gas) {
+    console.log(`\nGas estimate: ${ethers.formatEther(gas)} ETH ($${formatNumber(usdGasCost, 2)})`);
+    console.log(`Gas cost as percentage of claim value: ${formatNumber(percentage * 100, 2)}%`);
 
-      console.log(`\nGas estimate: ${ethers.formatEther(gas)} ETH ($${formatNumber(usdGasCost, 2)})`);
-      console.log(`Gas cost as percentage of claim value: ${formatNumber(percentage * 100, 2)}%`);
-
-      if (percentage < 0.01) {
-        console.log(`\nRecommendation: Claiming is economical (gas < 1% of claim value)`);
-      } else {
-        console.log(`\nRecommendation: Consider waiting to claim (gas is ${formatNumber(percentage * 100, 2)}% of claim value)`);
-      }
-    } catch (err) {
-      console.error('Error estimating gas:', err.message);
-      console.log('\nUnable to estimate gas costs for claiming.');
+    if (percentage < 0.01) {
+      console.log(`\nRecommendation: Claiming is economical (gas < 1% of claim value)`);
+    } else {
+      console.log(`\nRecommendation: Consider waiting to claim (gas is ${formatNumber(percentage * 100, 2)}% of claim value)`);
     }
   } else if (claimable <= 0) {
     console.log('\nNothing to claim at this time.');
-  } else {
+  } else if (!walletInstance.isInitialized()) {
     console.log('\nWallet not initialized, cannot estimate gas costs.');
+  } else if (!gas) {
+    console.log('\nUnable to estimate gas costs for claiming.');
   }
 }
 
