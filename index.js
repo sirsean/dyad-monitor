@@ -7,26 +7,8 @@ import ExecutionSchedule from './src/ExecutionSchedule.js';
 import Pricer from './src/Pricer.js';
 import discordClient from './src/Discord.js';
 import walletInstance from './src/Wallet.js';
-import { openContract, fetchRewards, fetchYield, formatNumber, getNoteIds, getFirstNoteId } from './src/utils.js';
-
-const VAULT_MANAGER_ADDRESS = '0xB62bdb1A6AC97A9B70957DD35357311e8859f0d7';
-const KEROSENE_VAULT_ADDRESS = '0x4808e4CC6a2Ba764778A0351E1Be198494aF0b43';
-const DYAD_LP_STAKING_FACTORY_ADDRESS = '0xD19DCbB8B82805d779a6A2182d8F4355275CC30a';
-const DYAD_ADDRESS = '0xFd03723a9A3AbE0562451496a9a394D2C4bad4ab';
-const LP_TOKENS = {
-  '0xa969cFCd9e583edb8c8B270Dc8CaFB33d6Cf662D': 'DYAD/wM',
-  '0x1507bf3F8712c496fA4679a4bA827F633979dBa4': 'DYAD/USDC',
-}
-
-const VAULT_ADDRESSES = {
-  'KEROSENE': KEROSENE_VAULT_ADDRESS,
-  'WETH': '0x4fde0131694Ae08C549118c595923CE0b42f8299',
-}
-
-const LOWER_CR = 2.5;
-const TARGET_CR = 2.75;
-const UPPER_CR = 3.0;
-const MIN_CR = 2.0;
+import { openContract, fetchRewards, fetchYield, getNoteIds, getFirstNoteId } from './src/utils.js';
+import { ADDRESSES, VAULT_ADDRESSES, LP_TOKENS, CR, formatNumber } from './src/constants.js';
 
 const provider = new ethers.JsonRpcProvider(process.env.ALCHEMY_RPC_URL);
 
@@ -36,10 +18,10 @@ let dyadLpStakingFactory;
 let dyad;
 
 async function initializeContracts() {
-  vaultManager = await openContract(VAULT_MANAGER_ADDRESS, 'abi/VaultManagerV5.json', provider);
-  keroseneVault = await openContract(KEROSENE_VAULT_ADDRESS, 'abi/KeroseneVault.json', provider);
-  dyadLpStakingFactory = await openContract(DYAD_LP_STAKING_FACTORY_ADDRESS, 'abi/DyadLPStakingFactory.json', provider);
-  dyad = await openContract(DYAD_ADDRESS, 'abi/Dyad.json', provider);
+  vaultManager = await openContract(ADDRESSES.VAULT_MANAGER, 'abi/VaultManagerV5.json', provider);
+  keroseneVault = await openContract(ADDRESSES.KEROSENE_VAULT, 'abi/KeroseneVault.json', provider);
+  dyadLpStakingFactory = await openContract(ADDRESSES.DYAD_LP_STAKING_FACTORY, 'abi/DyadLPStakingFactory.json', provider);
+  dyad = await openContract(ADDRESSES.DYAD, 'abi/Dyad.json', provider);
 }
 
 const notify = message => discordClient.notify(message);
@@ -121,16 +103,16 @@ async function lookupRisk(noteId) {
 
   const totalValue = await vaultManager.getTotalValue(noteId);
   const mintedDyad = await dyad.mintedDyad(noteId);
-  const targetDebt = parseFloat(ethers.formatUnits(totalValue, 18)) / TARGET_CR;
+  const targetDebt = parseFloat(ethers.formatUnits(totalValue, 18)) / CR.TARGET;
 
   const dyadToBurn = parseFloat(ethers.formatUnits(mintedDyad, 18)) - targetDebt;
   const dyadToMint = targetDebt - parseFloat(ethers.formatUnits(mintedDyad, 18));
 
   return {
     cr,
-    shouldMint: crFloat > UPPER_CR,
+    shouldMint: crFloat > CR.UPPER,
     dyadToMint,
-    shouldBurn: crFloat < LOWER_CR,
+    shouldBurn: crFloat < CR.LOWER,
     dyadToBurn,
   }
 }
@@ -294,8 +276,8 @@ async function mintCommand(noteId, amount) {
 
   console.log(`After Mint - Estimated Collateral Ratio: ${newCRFloat}`);
 
-  if (newCRFloat < MIN_CR) {
-    console.error(`Cannot mint: Collateral ratio ${newCRFloat} would go below ${MIN_CR}`);
+  if (newCRFloat < CR.MIN) {
+    console.error(`Cannot mint: Collateral ratio ${newCRFloat} would go below ${CR.MIN}`);
     return;
   }
 
@@ -358,11 +340,11 @@ async function burnCommand(noteId, amount) {
   console.log(`After Burn - Estimated Collateral Ratio: ${newCRFloat}`);
 
   try {
-    const currentAllowance = await dyad.allowance(wallet.address, VAULT_MANAGER_ADDRESS);
+    const currentAllowance = await dyad.allowance(wallet.address, ADDRESSES.VAULT_MANAGER);
     if (currentAllowance < dyadAmount) {
       console.log(`Approving DYAD transfer...`);
       const dyadWriter = dyad.connect(wallet);
-      const approveTx = await dyadWriter.approve(VAULT_MANAGER_ADDRESS, dyadAmount);
+      const approveTx = await dyadWriter.approve(ADDRESSES.VAULT_MANAGER, dyadAmount);
       await approveTx.wait();
     }
 
@@ -640,11 +622,11 @@ async function liquidateNoteCommand(noteId, dyadAmount) {
   }
 
   const dyadWriter = dyad.connect(wallet);
-  const currentAllowance = await dyad.allowance(wallet.address, VAULT_MANAGER_ADDRESS);
+  const currentAllowance = await dyad.allowance(wallet.address, ADDRESSES.VAULT_MANAGER);
   if (currentAllowance < dyadAmountBigInt) {
     console.log(`Approving DYAD transfer for ${ethers.formatUnits(dyadAmountBigInt, 18)} DYAD`);
     await dyadWriter
-      .approve(VAULT_MANAGER_ADDRESS, dyadAmountBigInt)
+      .approve(ADDRESSES.VAULT_MANAGER, dyadAmountBigInt)
       .then(tx => tx.wait());
   }
 
