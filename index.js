@@ -84,7 +84,8 @@ async function noteMessages(noteId) {
     dyadLpStakingFactory,
     keroseneVault,
     provider,
-    wallet: walletInstance
+    wallet: walletInstance,
+    shouldClaim: true // Can be toggled to false to prevent claiming
   });
   
   const lpPositionGenerator = new LpPositionMessageGenerator({

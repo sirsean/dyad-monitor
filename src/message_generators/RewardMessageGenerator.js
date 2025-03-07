@@ -14,13 +14,15 @@ class RewardMessageGenerator extends NoteMessageGenerator {
    * @param {Object} options.keroseneVault - The kerosene vault contract
    * @param {Object} options.provider - The ethers provider
    * @param {Object} options.wallet - The wallet instance (optional)
+   * @param {boolean} options.shouldClaim - Whether to actually claim rewards (default: true)
    */
-  constructor({ dyadLpStakingFactory, keroseneVault, provider, wallet = null }) {
+  constructor({ dyadLpStakingFactory, keroseneVault, provider, wallet = null, shouldClaim = true }) {
     super();
     this.dyadLpStakingFactory = dyadLpStakingFactory;
     this.keroseneVault = keroseneVault;
     this.provider = provider;
     this.wallet = wallet;
+    this.shouldClaim = shouldClaim;
   }
 
   /**
@@ -40,9 +42,13 @@ class RewardMessageGenerator extends NoteMessageGenerator {
 
     if (claimable > 0) {
       if (percentage && percentage < 0.01) {
-        messages.push(`Claiming ${formatNumber(ethers.formatUnits(claimable, 18))} KERO ($${formatNumber(claimableMp, 2)}/$${formatNumber(claimableDv, 2)}) for ${ethers.formatEther(gas)} ETH ($${formatNumber(usdGasCost, 2)})`);
-        if (this.wallet && this.wallet.isInitialized()) {
-          await this.claim(noteId);
+        if (this.shouldClaim) {
+          messages.push(`Claiming ${formatNumber(ethers.formatUnits(claimable, 18))} KERO ($${formatNumber(claimableMp, 2)}/$${formatNumber(claimableDv, 2)}) for ${ethers.formatEther(gas)} ETH ($${formatNumber(usdGasCost, 2)})`);
+          if (this.wallet && this.wallet.isInitialized()) {
+            await this.claim(noteId);
+          }
+        } else {
+          messages.push(`Claimable: ${formatNumber(ethers.formatUnits(claimable, 18))} KERO ($${formatNumber(claimableMp, 2)}/$${formatNumber(claimableDv, 2)}), would cost ${ethers.formatEther(gas)} ETH ($${formatNumber(usdGasCost, 2)}) gas (claim not executed)`);
         }
       } else if (gas) {
         messages.push(`Claimable: ${formatNumber(ethers.formatUnits(claimable, 18))} KERO ($${formatNumber(claimableMp, 2)}/$${formatNumber(claimableDv, 2)}), not worth ${ethers.formatEther(gas)} ETH ($${formatNumber(usdGasCost, 2)}) gas`);
