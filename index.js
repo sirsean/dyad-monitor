@@ -231,7 +231,7 @@ async function monitorCommand() {
   await notify(messages.join('\n===\n'));
 }
 
-async function checkNote(noteId) {
+async function checkNoteCommand(noteId) {
   const cr = await vaultManager.collatRatio(noteId);
   const crFloat = formatNumber(ethers.formatUnits(cr, 18), 3);
   console.log(`Collateral Ratio for Note ${noteId}: ${crFloat}`);
@@ -540,7 +540,7 @@ async function watchCommand() {
   });
 }
 
-async function checkVault(asset) {
+async function checkVaultCommand(asset) {
   const noteId = getFirstNoteId();
 
   const vaultAddress = VAULT_ADDRESSES[asset];
@@ -567,7 +567,7 @@ async function claimCommand() {
   }
 }
 
-async function withdrawFromVault(asset, amount) {
+async function withdrawFromVaultCommand(asset, amount) {
   if (!walletInstance.isInitialized()) {
     throw new Error('Wallet not initialized');
   }
@@ -588,7 +588,7 @@ async function withdrawFromVault(asset, amount) {
     .then(tx => tx.wait());
 }
 
-async function listNotes() {
+async function listNotesCommand() {
   const notes = await GraphNote.search();
   const filteredNotes = notes
     .filter(note => note.collatRatio <= ethers.parseUnits('1.6', 18))
@@ -600,7 +600,7 @@ async function listNotes() {
   });
 }
 
-async function liquidateNote(noteId, dyadAmount) {
+async function liquidateNoteCommand(noteId, dyadAmount) {
   const mintedDyad = await dyad.mintedDyad(noteId);
   const dyadAmountBigInt = ethers.parseUnits(dyadAmount, 18);
 
@@ -679,28 +679,28 @@ async function main() {
   program.command('check-note')
     .description('Check collateral ratio for a specific note')
     .argument('<noteId>', 'Note ID to check')
-    .action(checkNote);
+    .action(checkNoteCommand);
 
   program.command('liquidate')
     .description('Liquidate a note')
     .argument('<noteId>', 'Note ID to liquidate')
     .argument('<dyadAmount>', 'Amount of DYAD to liquidate')
-    .action(liquidateNote);
+    .action(liquidateNoteCommand);
 
   program.command('check-vault')
     .description('Check vault asset balance for a note')
     .argument('<asset>', 'Asset vault to check (KEROSENE, WETH)')
-    .action(checkVault);
+    .action(checkVaultCommand);
 
   program.command('list')
     .description('List notes that are close to liquidation')
-    .action(listNotes);
+    .action(listNotesCommand);
 
   program.command('withdraw')
     .description('Withdraw assets from a vault')
     .argument('<asset>', 'Asset to withdraw (KEROSENE, WETH)')
     .argument('<amount>', 'Amount to withdraw')
-    .action(withdrawFromVault);
+    .action(withdrawFromVaultCommand);
 
   program.command('claim')
     .description('Claim rewards to vault')
