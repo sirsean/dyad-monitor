@@ -1,4 +1,3 @@
-
 import { ethers } from 'ethers';
 
 // Contract addresses
@@ -21,13 +20,12 @@ export const LP_TOKENS = {
   '0x1507bf3F8712c496fA4679a4bA827F633979dBa4': 'DYAD/USDC',
 };
 
-// Collateral Ratio constants
-export const CR = {
-  LOWER: 2.5,
-  TARGET: 2.75,
-  UPPER: 3.0,
-  MIN: 2.0,
-};
+// CR constants
+export const TARGET_CR = 2.75;
+export const LOWER_CR = 2.5;
+export const UPPER_CR = 3.0;
+export const MIN_CR = 2.0; //Added MIN_CR constant
+
 
 // Format a number to a specific number of decimal places
 export const formatNumber = (num, decimals = 2) => {
@@ -41,6 +39,9 @@ export default {
   ADDRESSES,
   VAULT_ADDRESSES,
   LP_TOKENS,
-  CR,
+  TARGET_CR,
+  LOWER_CR,
+  UPPER_CR,
+  MIN_CR,
   formatNumber,
 };

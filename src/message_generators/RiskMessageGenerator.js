@@ -2,6 +2,7 @@
 import { ethers } from 'ethers';
 import NoteMessageGenerator from './NoteMessageGenerator.js';
 import { formatNumber } from '../utils.js';
+import { TARGET_CR, LOWER_CR, UPPER_CR } from '../constants.js';
 
 /**
  * Generates risk-related messages for a note
@@ -16,9 +17,6 @@ class RiskMessageGenerator extends NoteMessageGenerator {
     super();
     this.vaultManager = vaultManager;
     this.dyad = dyad;
-    this.TARGET_CR = 2.75;
-    this.LOWER_CR = 2.5;
-    this.UPPER_CR = 3.0;
   }
 
   /**
@@ -44,10 +42,6 @@ class RiskMessageGenerator extends NoteMessageGenerator {
    * @returns {Promise<Object>} Risk information
    */
   static async lookupRisk(noteId, vaultManager, dyad) {
-    const TARGET_CR = 2.75;
-    const LOWER_CR = 2.5;
-    const UPPER_CR = 3.0;
-    
     const cr = await vaultManager.collatRatio(noteId);
     const crFloat = formatNumber(ethers.formatUnits(cr, 18), 3);
 
