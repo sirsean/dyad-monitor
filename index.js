@@ -655,7 +655,7 @@ async function liquidateNoteCommand(noteId, dyadAmount) {
 }
 
 async function main() {
-  await walletInstance.initialize(provider);
+  walletInstance.initialize(provider);
   await initializeContracts();
 
   const discordInitialized = await discordClient.initialize();
