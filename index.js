@@ -9,8 +9,14 @@ import discordClient from './src/Discord.js';
 import walletInstance from './src/Wallet.js';
 import { openContract, fetchRewards, fetchYield, getNoteIds, getFirstNoteId, formatNumber } from './src/utils.js';
 import { ADDRESSES, VAULT_ADDRESSES, LP_TOKENS, TARGET_CR, LOWER_CR, UPPER_CR, MIN_CR } from './src/constants.js';
-import RewardMessageGenerator from './src/message_generators/RewardMessageGenerator.js';
-import RiskMessageGenerator from './src/message_generators/RiskMessageGenerator.js';
+import { 
+  RewardMessageGenerator, 
+  RiskMessageGenerator, 
+  BasicInfoMessageGenerator, 
+  LpPositionMessageGenerator, 
+  RecommendationMessageGenerator, 
+  CompositeMessageGenerator 
+} from './src/message_generators/index.js';
 
 const provider = new ethers.JsonRpcProvider(process.env.ALCHEMY_RPC_URL);
 
@@ -66,72 +72,46 @@ async function lookupRisk(noteId) {
 }
 
 async function noteMessages(noteId) {
-  const messages = [];
-
-  const pricer = new Pricer();
-
-  const mp = await pricer.getPrice('KEROSENE');
-  const dv = await keroseneVault.assetPrice().then(r => parseFloat(r) * 10 ** -8);
-
-  messages.push(`Note: ${noteId}`);
-
-  const { cr, shouldMint, dyadToMint, shouldBurn, dyadToBurn } = await lookupRisk(noteId);
-  const crFloat = formatNumber(ethers.formatUnits(cr, 18), 3);
-  messages.push(`CR: ${crFloat}`);
-
-  const y = await fetchYield(noteId);
-
-  const noteXp = y[Object.keys(y)[0]]?.noteXp;
-  messages.push(`XP: ${formatNumber(noteXp, 2)}`);
-
-  const rewardMessageGenerator = new RewardMessageGenerator({
+  // Create individual message generators
+  const basicInfoGenerator = new BasicInfoMessageGenerator();
+  
+  const riskGenerator = new RiskMessageGenerator({
+    vaultManager,
+    dyad
+  });
+  
+  const rewardGenerator = new RewardMessageGenerator({
     dyadLpStakingFactory,
     keroseneVault,
     provider,
     wallet: walletInstance
   });
-
-  const { claimable, claimableMp, percentage, gas, usdGasCost } = await rewardMessageGenerator.estimateClaim(noteId);
-
-  const claimableDv = parseFloat(claimable) * 10 ** -18 * dv;
-
-  if (claimable > 0) {
-    if (percentage < 0.01) {
-      messages.push(`Claiming ${formatNumber(ethers.formatUnits(claimable, 18))} KERO ($${formatNumber(claimableMp, 2)}/$${formatNumber(claimableDv, 2)}) for ${ethers.formatEther(gas)} ETH ($${formatNumber(usdGasCost, 2)})`);
-      await rewardMessageGenerator.claim(noteId);
-    } else if (gas) {
-      messages.push(`Claimable: ${formatNumber(ethers.formatUnits(claimable, 18))} KERO ($${formatNumber(claimableMp, 2)}/$${formatNumber(claimableDv, 2)}), not worth ${ethers.formatEther(gas)} ETH ($${formatNumber(usdGasCost, 2)}) gas`);
-    } else {
-       messages.push(`Claimable: ${formatNumber(ethers.formatUnits(claimable, 18))} KERO ($${formatNumber(claimableMp, 2)}/$${formatNumber(claimableDv, 2)}), but gas cannot be estimated`);
-    }
-  }
-
-  for (const key in y) {
-    const vault = y[key];
-    if (parseFloat(vault.noteLiquidity) > 0) {
-      messages.push('---');
-      messages.push(`LP: ${LP_TOKENS[vault.lpToken]}`);
-      messages.push(`Liquidity: ${formatNumber(vault.noteLiquidity)}`);
-
-      const keroPerWeek = parseFloat(vault.kerosenePerYear) / 52;
-      messages.push(`KERO/week: ${formatNumber(keroPerWeek)} ($${formatNumber(keroPerWeek * mp, 2)}/$${formatNumber(keroPerWeek * dv, 2)})`);
-
-      const mpApr = parseFloat(vault.kerosenePerYear) * mp / parseFloat(vault.noteLiquidity);
-      messages.push(`MP-APR: ${formatNumber(mpApr * 100, 2)}%`);
-
-      const dvApr = parseFloat(vault.kerosenePerYear) * dv / parseFloat(vault.noteLiquidity);
-      messages.push(`DV-APR: ${formatNumber(dvApr * 100, 2)}%`);
-    }
-  }
-
-  if (shouldBurn) {
-    messages.push('---');
-    messages.push(`Recommendation: Burn ${formatNumber(dyadToBurn, 0)} DYAD`);
-  } else if (shouldMint) {
-    messages.push('---');
-    messages.push(`Recommendation: Mint ${formatNumber(dyadToMint, 0)} DYAD`);
-  }
-
+  
+  const lpPositionGenerator = new LpPositionMessageGenerator({
+    keroseneVault,
+    lpTokens: LP_TOKENS
+  });
+  
+  const recommendationGenerator = new RecommendationMessageGenerator({
+    vaultManager,
+    dyad
+  });
+  
+  // Create a composite generator with all the individual generators
+  const compositeGenerator = new CompositeMessageGenerator({
+    generators: [
+      basicInfoGenerator,
+      riskGenerator,
+      rewardGenerator,
+      lpPositionGenerator,
+      recommendationGenerator
+    ]
+  });
+  
+  // Generate all messages
+  const messages = await compositeGenerator.generate(noteId);
+  
+  // Join the messages with newlines and return
   return messages.join('\n');
 }
 
