@@ -31,10 +31,11 @@ class LpBalanceMessageGenerator extends NoteMessageGenerator {
       
       for (const [lpAddress, lpName] of Object.entries(LP_TOKENS)) {
         // Open the CurveStableSwapNG contract
-        const lpContract = await openContract(lpAddress, 'abi/CurveStableSwapNG.json', ethers.provider);
+        const lpContract = await openContract(lpAddress, 'abi/CurveStableSwapNG.json', this.provider);
         
         // Get balances from the pool
         const balances = await lpContract.get_balances();
+        console.log(balances);
         
         if (balances.length >= 2) {
           // Get the address of each coin in the pool
@@ -42,8 +43,8 @@ class LpBalanceMessageGenerator extends NoteMessageGenerator {
           const coin1Address = await lpContract.coins(1);
           
           // Get token contracts
-          const token0 = await openContract(coin0Address, 'abi/ERC20.json', ethers.provider);
-          const token1 = await openContract(coin1Address, 'abi/ERC20.json', ethers.provider);
+          const token0 = await openContract(coin0Address, 'abi/ERC20.json', this.provider);
+          const token1 = await openContract(coin1Address, 'abi/ERC20.json', this.provider);
           
           // Get token symbols
           const symbol0 = await token0.symbol();
