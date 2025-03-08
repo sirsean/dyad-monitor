@@ -36,10 +36,6 @@ class LpBalanceMessageGenerator extends NoteMessageGenerator {
         // Get balances from the pool
         const balances = await lpContract.get_balances();
         
-        // Log the balances in a more readable format
-        console.log(`LP ${lpName} balances:`, 
-          balances.map((bal, i) => `[${i}]: ${bal.toString()}`));
-        
         if (balances.length >= 2) {
           // Get the address of each coin in the pool
           const coin0Address = await lpContract.coins(0);
