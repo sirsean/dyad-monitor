@@ -7,8 +7,8 @@ import ExecutionSchedule from './src/ExecutionSchedule.js';
 import Pricer from './src/Pricer.js';
 import discordClient from './src/Discord.js';
 import walletInstance from './src/Wallet.js';
-import { fetchRewards, getNoteIds, getFirstNoteId, formatNumber } from './src/utils.js';
-import { VAULT_ADDRESSES, MIN_CR } from './src/constants.js';
+import { openContract, fetchRewards, getNoteIds, getFirstNoteId, formatNumber } from './src/utils.js';
+import { MIN_CR } from './src/constants.js';
 import { 
   RewardMessageGenerator, 
   RiskMessageGenerator, 
@@ -165,6 +165,7 @@ async function checkNoteCommand(noteId) {
     const assetAddress = await vault.asset();
     const asset = await openContract(assetAddress, 'abi/ERC20.json', provider);
     const symbol = await asset.symbol();
+    console.log(symbol, assetAddress);
     const usdValue = await vault.getUsdValue(noteId);
     console.log(`${symbol}: $${formatNumber(ethers.formatUnits(usdValue, 18), 2)}`);
   });
