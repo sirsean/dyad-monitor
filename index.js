@@ -43,8 +43,6 @@ async function estimateClaim() {
   }
 
   const rewardMessageGenerator = new RewardMessageGenerator({
-    dyadLpStakingFactory,
-    keroseneVault,
     provider,
     wallet: walletInstance
   });
@@ -59,8 +57,6 @@ async function claim() {
   }
 
   const rewardMessageGenerator = new RewardMessageGenerator({
-    dyadLpStakingFactory,
-    keroseneVault,
     provider,
     wallet: walletInstance
   });
@@ -84,8 +80,6 @@ async function noteMessages(noteId, shouldClaim = false) {
   });
   
   const rewardGenerator = new RewardMessageGenerator({
-    dyadLpStakingFactory,
-    keroseneVault,
     provider,
     wallet: walletInstance,
     shouldClaim: shouldClaim // Use the shouldClaim parameter
@@ -342,8 +336,6 @@ async function checkClaimableCommand() {
   console.log(`Amount already claimed: ${ethers.formatUnits(claimed, 18)} KERO`);
 
   const rewardMessageGenerator = new RewardMessageGenerator({
-    dyadLpStakingFactory,
-    keroseneVault,
     provider,
     wallet: walletInstance
   });

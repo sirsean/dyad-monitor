@@ -3,6 +3,7 @@ import { ethers } from 'ethers';
 import NoteMessageGenerator from './NoteMessageGenerator.js';
 import { formatNumber, fetchRewards } from '../utils.js';
 import Pricer from '../Pricer.js';
+import { getContracts } from '../contracts.js';
 
 /**
  * Generates reward-related messages for a note
@@ -10,16 +11,12 @@ import Pricer from '../Pricer.js';
 class RewardMessageGenerator extends NoteMessageGenerator {
   /**
    * @param {Object} options
-   * @param {Object} options.dyadLpStakingFactory - The staking factory contract
-   * @param {Object} options.keroseneVault - The kerosene vault contract
    * @param {Object} options.provider - The ethers provider
    * @param {Object} options.wallet - The wallet instance (optional)
    * @param {boolean} options.shouldClaim - Whether to actually claim rewards (default: true)
    */
-  constructor({ dyadLpStakingFactory, keroseneVault, provider, wallet = null, shouldClaim = true }) {
+  constructor({ provider, wallet = null, shouldClaim = true }) {
     super();
-    this.dyadLpStakingFactory = dyadLpStakingFactory;
-    this.keroseneVault = keroseneVault;
     this.provider = provider;
     this.wallet = wallet;
     this.shouldClaim = shouldClaim;
@@ -33,7 +30,8 @@ class RewardMessageGenerator extends NoteMessageGenerator {
   async generate(noteId) {
     const messages = [];
     
-    const dv = await this.keroseneVault.assetPrice().then(r => parseFloat(r) * 10 ** -8);
+    const { keroseneVault } = getContracts();
+    const dv = await keroseneVault.assetPrice().then(r => parseFloat(r) * 10 ** -8);
     
     const { claimable, claimableMp, percentage, gas, usdGasCost } = await this.estimateClaim(noteId);
     const claimableDv = parseFloat(claimable) * 10 ** -18 * dv;
@@ -64,9 +62,10 @@ class RewardMessageGenerator extends NoteMessageGenerator {
    * @returns {Promise<Object>} Claim estimation
    */
   async estimateClaim(noteId) {
+    const { dyadLpStakingFactory } = getContracts();
     const pricer = new Pricer();
     const rewards = await fetchRewards(noteId);
-    const claimed = await this.dyadLpStakingFactory.noteIdToTotalClaimed(noteId);
+    const claimed = await dyadLpStakingFactory.noteIdToTotalClaimed(noteId);
 
     const amount = rewards.amount;
     const proof = rewards.proof;
@@ -81,7 +80,8 @@ class RewardMessageGenerator extends NoteMessageGenerator {
         claimableMp,
       };
     } else if (this.wallet && this.wallet.isInitialized()) {
-      const dyadLpStakingFactoryWriter = this.dyadLpStakingFactory.connect(this.wallet.getWallet());
+      const { dyadLpStakingFactory } = getContracts();
+      const dyadLpStakingFactoryWriter = dyadLpStakingFactory.connect(this.wallet.getWallet());
       try {
         const gasEstimate = await dyadLpStakingFactoryWriter.claimToVault.estimateGas(
           noteId,
@@ -126,11 +126,12 @@ class RewardMessageGenerator extends NoteMessageGenerator {
       throw new Error('Wallet not initialized');
     }
 
+    const { dyadLpStakingFactory } = getContracts();
     const rewards = await fetchRewards(noteId);
     const amount = rewards.amount;
     const proof = rewards.proof;
 
-    const dyadLpStakingFactoryWriter = this.dyadLpStakingFactory.connect(this.wallet.getWallet());
+    const dyadLpStakingFactoryWriter = dyadLpStakingFactory.connect(this.wallet.getWallet());
     await dyadLpStakingFactoryWriter.claimToVault(noteId, amount, proof)
       .then(tx => tx.wait());
   }
