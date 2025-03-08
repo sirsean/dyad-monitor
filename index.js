@@ -74,10 +74,7 @@ async function noteMessages(noteId, shouldClaim = false) {
   // Create individual message generators
   const basicInfoGenerator = new BasicInfoMessageGenerator();
   
-  const riskGenerator = new RiskMessageGenerator({
-    vaultManager,
-    dyad
-  });
+  const riskGenerator = new RiskMessageGenerator();
   
   const rewardGenerator = new RewardMessageGenerator({
     provider,

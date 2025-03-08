@@ -3,20 +3,17 @@ import { ethers } from 'ethers';
 import NoteMessageGenerator from './NoteMessageGenerator.js';
 import { formatNumber } from '../utils.js';
 import { TARGET_CR, LOWER_CR, UPPER_CR } from '../constants.js';
+import { getContracts } from '../contracts.js';
 
 /**
  * Generates risk-related messages for a note
  */
 class RiskMessageGenerator extends NoteMessageGenerator {
   /**
-   * @param {Object} options
-   * @param {Object} options.vaultManager - The vault manager contract
-   * @param {Object} options.dyad - The DYAD contract
+   * Constructor for RiskMessageGenerator
    */
-  constructor({ vaultManager, dyad }) {
+  constructor() {
     super();
-    this.vaultManager = vaultManager;
-    this.dyad = dyad;
   }
 
   /**
@@ -27,7 +24,8 @@ class RiskMessageGenerator extends NoteMessageGenerator {
   async generate(noteId) {
     const messages = [];
     
-    const { cr } = await RiskMessageGenerator.lookupRisk(noteId, this.vaultManager, this.dyad);
+    const { vaultManager, dyad } = getContracts();
+    const { cr } = await RiskMessageGenerator.lookupRisk(noteId, vaultManager, dyad);
     const crFloat = formatNumber(ethers.formatUnits(cr, 18), 3);
     messages.push(`CR: ${crFloat}`);
     
