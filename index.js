@@ -165,7 +165,7 @@ async function checkNoteCommand(noteId) {
     const assetAddress = await vault.asset();
     const asset = await openContract(assetAddress, 'abi/ERC20.json', provider);
     const symbol = await asset.symbol();
-    console.log(symbol, assetAddress);
+    console.log(symbol, vaultAddress);
     const usdValue = await vault.getUsdValue(noteId);
     console.log(`${symbol}: $${formatNumber(ethers.formatUnits(usdValue, 18), 2)}`);
   });
