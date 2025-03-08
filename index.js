@@ -14,6 +14,7 @@ import {
   RiskMessageGenerator, 
   BasicInfoMessageGenerator, 
   LpPositionMessageGenerator, 
+  LpBalanceMessageGenerator,
   RecommendationMessageGenerator, 
   CompositeMessageGenerator 
 } from './src/message_generators/index.js';
