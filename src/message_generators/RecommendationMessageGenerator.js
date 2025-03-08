@@ -2,20 +2,17 @@
 import NoteMessageGenerator from './NoteMessageGenerator.js';
 import { formatNumber } from '../utils.js';
 import RiskMessageGenerator from './RiskMessageGenerator.js';
+import { getContracts } from '../contracts.js';
 
 /**
  * Generates recommendation messages for a note
  */
 class RecommendationMessageGenerator extends NoteMessageGenerator {
   /**
-   * @param {Object} options
-   * @param {Object} options.vaultManager - The vault manager contract
-   * @param {Object} options.dyad - The DYAD contract
+   * Constructor for RecommendationMessageGenerator
    */
-  constructor({ vaultManager, dyad }) {
+  constructor() {
     super();
-    this.vaultManager = vaultManager;
-    this.dyad = dyad;
   }
 
   /**
@@ -26,8 +23,9 @@ class RecommendationMessageGenerator extends NoteMessageGenerator {
   async generate(noteId) {
     const messages = [];
     
+    const { vaultManager, dyad } = getContracts();
     const { shouldMint, dyadToMint, shouldBurn, dyadToBurn } = 
-      await RiskMessageGenerator.lookupRisk(noteId, this.vaultManager, this.dyad);
+      await RiskMessageGenerator.lookupRisk(noteId, vaultManager, dyad);
     
     if (shouldBurn) {
       messages.push('---');

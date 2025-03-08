@@ -87,10 +87,7 @@ async function noteMessages(noteId, shouldClaim = false) {
   
   const lpPositionGenerator = new LpPositionMessageGenerator();
   
-  const recommendationGenerator = new RecommendationMessageGenerator({
-    vaultManager,
-    dyad
-  });
+  const recommendationGenerator = new RecommendationMessageGenerator();
   
   // Create a composite generator with all the individual generators
   const compositeGenerator = new CompositeMessageGenerator({
