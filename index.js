@@ -89,8 +89,7 @@ async function noteMessages(noteId, shouldClaim = false) {
   });
   
   const lpPositionGenerator = new LpPositionMessageGenerator({
-    keroseneVault,
-    lpTokens: LP_TOKENS
+    keroseneVault
   });
   
   const recommendationGenerator = new RecommendationMessageGenerator({

@@ -2,6 +2,7 @@
 import NoteMessageGenerator from './NoteMessageGenerator.js';
 import { fetchYield, formatNumber } from '../utils.js';
 import Pricer from '../Pricer.js';
+import { LP_TOKENS } from '../constants.js';
 
 /**
  * Generates LP position messages for a note
@@ -10,12 +11,11 @@ class LpPositionMessageGenerator extends NoteMessageGenerator {
   /**
    * @param {Object} options
    * @param {Object} options.keroseneVault - The kerosene vault contract
-   * @param {Object} options.lpTokens - Dictionary mapping LP token addresses to names
    */
-  constructor({ keroseneVault, lpTokens }) {
+  constructor({ keroseneVault }) {
     super();
     this.keroseneVault = keroseneVault;
-    this.lpTokens = lpTokens;
+    this.lpTokens = LP_TOKENS;
   }
 
   /**
