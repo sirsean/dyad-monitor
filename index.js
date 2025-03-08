@@ -91,9 +91,7 @@ async function noteMessages(noteId, shouldClaim = false) {
     shouldClaim: shouldClaim // Use the shouldClaim parameter
   });
   
-  const lpPositionGenerator = new LpPositionMessageGenerator({
-    keroseneVault
-  });
+  const lpPositionGenerator = new LpPositionMessageGenerator();
   
   const recommendationGenerator = new RecommendationMessageGenerator({
     vaultManager,

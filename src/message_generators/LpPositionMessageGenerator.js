@@ -3,18 +3,17 @@ import NoteMessageGenerator from './NoteMessageGenerator.js';
 import { fetchYield, formatNumber } from '../utils.js';
 import Pricer from '../Pricer.js';
 import { LP_TOKENS } from '../constants.js';
+import { getContracts } from '../contracts.js';
 
 /**
  * Generates LP position messages for a note
  */
 class LpPositionMessageGenerator extends NoteMessageGenerator {
   /**
-   * @param {Object} options
-   * @param {Object} options.keroseneVault - The kerosene vault contract
+   * Constructor for LpPositionMessageGenerator
    */
-  constructor({ keroseneVault }) {
+  constructor() {
     super();
-    this.keroseneVault = keroseneVault;
   }
 
   /**
@@ -25,9 +24,10 @@ class LpPositionMessageGenerator extends NoteMessageGenerator {
   async generate(noteId) {
     const messages = [];
     
+    const { keroseneVault } = getContracts();
     const pricer = new Pricer();
     const mp = await pricer.getPrice('KEROSENE');
-    const dv = await this.keroseneVault.assetPrice().then(r => parseFloat(r) * 10 ** -8);
+    const dv = await keroseneVault.assetPrice().then(r => parseFloat(r) * 10 ** -8);
     
     const y = await fetchYield(noteId);
     
