@@ -84,6 +84,8 @@ async function noteMessages(noteId, shouldClaim = false) {
   
   const lpPositionGenerator = new LpPositionMessageGenerator();
   
+  const lpBalanceGenerator = new LpBalanceMessageGenerator();
+  
   const recommendationGenerator = new RecommendationMessageGenerator();
   
   // Create a composite generator with all the individual generators
@@ -93,6 +95,7 @@ async function noteMessages(noteId, shouldClaim = false) {
       riskGenerator,
       rewardGenerator,
       lpPositionGenerator,
+      lpBalanceGenerator,
       recommendationGenerator
     ]
   });
