@@ -7,8 +7,8 @@ import ExecutionSchedule from './src/ExecutionSchedule.js';
 import Pricer from './src/Pricer.js';
 import discordClient from './src/Discord.js';
 import walletInstance from './src/Wallet.js';
-import { openContract, fetchRewards, getNoteIds, getFirstNoteId, formatNumber } from './src/utils.js';
-import { ADDRESSES, VAULT_ADDRESSES, MIN_CR } from './src/constants.js';
+import { fetchRewards, getNoteIds, getFirstNoteId, formatNumber } from './src/utils.js';
+import { VAULT_ADDRESSES, MIN_CR } from './src/constants.js';
 import { 
   RewardMessageGenerator, 
   RiskMessageGenerator, 
@@ -17,19 +17,22 @@ import {
   RecommendationMessageGenerator, 
   CompositeMessageGenerator 
 } from './src/message_generators/index.js';
+import * as contracts from './src/contracts.js';
 
 const provider = new ethers.JsonRpcProvider(process.env.ALCHEMY_RPC_URL);
 
+// Contract references for easier access in this file
 let vaultManager;
 let keroseneVault;
 let dyadLpStakingFactory;
 let dyad;
 
 async function initializeContracts() {
-  vaultManager = await openContract(ADDRESSES.VAULT_MANAGER, 'abi/VaultManagerV5.json', provider);
-  keroseneVault = await openContract(ADDRESSES.KEROSENE_VAULT, 'abi/KeroseneVault.json', provider);
-  dyadLpStakingFactory = await openContract(ADDRESSES.DYAD_LP_STAKING_FACTORY, 'abi/DyadLPStakingFactory.json', provider);
-  dyad = await openContract(ADDRESSES.DYAD, 'abi/Dyad.json', provider);
+  const initializedContracts = await contracts.initialize(provider);
+  vaultManager = initializedContracts.vaultManager;
+  keroseneVault = initializedContracts.keroseneVault;
+  dyadLpStakingFactory = initializedContracts.dyadLpStakingFactory;
+  dyad = initializedContracts.dyad;
 }
 
 const notify = message => discordClient.notify(message);
@@ -451,15 +454,14 @@ async function watchCommand() {
 async function checkVaultCommand(asset) {
   const noteId = getFirstNoteId();
 
-  const vaultAddress = VAULT_ADDRESSES[asset];
-  if (!vaultAddress) {
-    console.error(`Unknown asset: ${asset}. Available assets: ${Object.keys(VAULT_ADDRESSES).join(', ')}`);
+  try {
+    const vault = await contracts.getVaultByAsset(asset, provider);
+    const balance = await vault.id2asset(noteId);
+    console.log(`Balance in ${asset} vault for note ${noteId}: ${ethers.formatUnits(balance, 18)}`);
+  } catch (error) {
+    console.error(error.message);
     return;
   }
-
-  const vault = await openContract(vaultAddress, 'abi/Vault.json', provider);
-  const balance = await vault.id2asset(noteId);
-  console.log(`Balance in ${asset} vault for note ${noteId}: ${ethers.formatUnits(balance, 18)}`);
 }
 
 async function claimCommand() {
@@ -480,20 +482,23 @@ async function withdrawFromVaultCommand(asset, amount) {
     throw new Error('Wallet not initialized');
   }
 
-  const vaultAddress = VAULT_ADDRESSES[asset];
-  if (!vaultAddress) {
-    throw new Error(`Unknown asset: ${asset}. Available assets: ${Object.keys(VAULT_ADDRESSES).join(', ')}`);
+  try {
+    const { vaultManager } = contracts.getContracts();
+    const vault = await contracts.getVaultByAsset(asset, provider);
+    
+    const noteId = getFirstNoteId();
+    const parsedAmount = ethers.parseUnits(amount, 18);
+    const wallet = walletInstance.getWallet();
+
+    console.log(`Withdrawing ${amount} ${asset} from note ${noteId}`);
+
+    const vaultManagerWriter = vaultManager.connect(wallet);
+    await vaultManagerWriter.withdraw(noteId, vault.target, parsedAmount, wallet.address)
+      .then(tx => tx.wait());
+  } catch (error) {
+    console.error(error.message);
+    throw error;
   }
-
-  const noteId = getFirstNoteId();
-  const parsedAmount = ethers.parseUnits(amount, 18);
-  const wallet = walletInstance.getWallet();
-
-  console.log(`Withdrawing ${amount} ${asset} from note ${noteId}`);
-
-  const vaultManagerWriter = vaultManager.connect(wallet);
-  await vaultManagerWriter.withdraw(noteId, vaultAddress, parsedAmount, wallet.address)
-    .then(tx => tx.wait());
 }
 
 async function listNotesCommand() {
