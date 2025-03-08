@@ -10,9 +10,12 @@ import { LP_TOKENS } from '../constants.js';
 class LpBalanceMessageGenerator extends NoteMessageGenerator {
   /**
    * Constructor for LpBalanceMessageGenerator
+   * @param {Object} options
+   * @param {Object} options.provider - The ethers provider
    */
-  constructor() {
+  constructor({ provider }) {
     super();
+    this.provider = provider;
   }
 
   /**

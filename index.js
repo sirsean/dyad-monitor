@@ -85,7 +85,9 @@ async function noteMessages(noteId, shouldClaim = false) {
   
   const lpPositionGenerator = new LpPositionMessageGenerator();
   
-  const lpBalanceGenerator = new LpBalanceMessageGenerator();
+  const lpBalanceGenerator = new LpBalanceMessageGenerator({
+    provider
+  });
   
   const recommendationGenerator = new RecommendationMessageGenerator();
   
