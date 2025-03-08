@@ -45,17 +45,19 @@ class LpBalanceMessageGenerator extends NoteMessageGenerator {
           const token0 = await openContract(coin0Address, 'abi/ERC20.json', this.provider);
           const token1 = await openContract(coin1Address, 'abi/ERC20.json', this.provider);
           
-          // Get token symbols
+          // Get token symbols and decimals
           const symbol0 = await token0.symbol();
           const symbol1 = await token1.symbol();
+          const decimals0 = await token0.decimals();
+          const decimals1 = await token1.decimals();
           
-          // Format balance values
-          const balance0Formatted = formatNumber(ethers.formatUnits(balances[0], 18), 2);
-          const balance1Formatted = formatNumber(ethers.formatUnits(balances[1], 18), 2);
+          // Format balance values with proper decimals
+          const balance0Formatted = formatNumber(ethers.formatUnits(balances[0], decimals0), 2);
+          const balance1Formatted = formatNumber(ethers.formatUnits(balances[1], decimals1), 2);
           
           // Determine which token has more balance
-          const balance0Value = parseFloat(ethers.formatUnits(balances[0], 18));
-          const balance1Value = parseFloat(ethers.formatUnits(balances[1], 18));
+          const balance0Value = parseFloat(ethers.formatUnits(balances[0], decimals0));
+          const balance1Value = parseFloat(ethers.formatUnits(balances[1], decimals1));
           const ratio = balance0Value / balance1Value;
           
           let comparisonMessage;
