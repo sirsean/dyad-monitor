@@ -23,9 +23,8 @@ class RecommendationMessageGenerator extends NoteMessageGenerator {
   async generate(noteId) {
     const messages = [];
     
-    const { vaultManager, dyad } = getContracts();
     const { shouldMint, dyadToMint, shouldBurn, dyadToBurn } = 
-      await RiskMessageGenerator.lookupRisk(noteId, vaultManager, dyad);
+      await RiskMessageGenerator.lookupRisk(noteId);
     
     if (shouldBurn) {
       messages.push('---');

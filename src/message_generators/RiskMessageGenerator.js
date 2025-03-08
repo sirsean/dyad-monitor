@@ -35,11 +35,15 @@ class RiskMessageGenerator extends NoteMessageGenerator {
   /**
    * Static method to lookup risk for a note
    * @param {string} noteId - The note ID
-   * @param {Object} vaultManager - The vault manager contract
-   * @param {Object} dyad - The DYAD contract
+   * @param {Object} [vaultManager] - Optional vault manager contract (for backwards compatibility)
+   * @param {Object} [dyad] - Optional DYAD contract (for backwards compatibility)
    * @returns {Promise<Object>} Risk information
    */
   static async lookupRisk(noteId, vaultManager, dyad) {
+    const contracts = getContracts();
+    vaultManager = vaultManager || contracts.vaultManager;
+    dyad = dyad || contracts.dyad;
+    
     const cr = await vaultManager.collatRatio(noteId);
     const crFloat = formatNumber(ethers.formatUnits(cr, 18), 3);
 
