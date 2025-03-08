@@ -15,7 +15,6 @@ class LpPositionMessageGenerator extends NoteMessageGenerator {
   constructor({ keroseneVault }) {
     super();
     this.keroseneVault = keroseneVault;
-    this.lpTokens = LP_TOKENS;
   }
 
   /**
@@ -36,7 +35,7 @@ class LpPositionMessageGenerator extends NoteMessageGenerator {
       const vault = y[key];
       if (parseFloat(vault.noteLiquidity) > 0) {
         messages.push('---');
-        messages.push(`LP: ${this.lpTokens[vault.lpToken]}`);
+        messages.push(`LP: ${LP_TOKENS[vault.lpToken]}`);
         messages.push(`Liquidity: ${formatNumber(vault.noteLiquidity)}`);
 
         const keroPerWeek = parseFloat(vault.kerosenePerYear) / 52;
