@@ -24,8 +24,7 @@ class RiskMessageGenerator extends NoteMessageGenerator {
   async generate(noteId) {
     const messages = [];
     
-    const { vaultManager, dyad } = getContracts();
-    const { cr } = await RiskMessageGenerator.lookupRisk(noteId, vaultManager, dyad);
+    const { cr } = await RiskMessageGenerator.lookupRisk(noteId);
     const crFloat = formatNumber(ethers.formatUnits(cr, 18), 3);
     messages.push(`CR: ${crFloat}`);
     
@@ -35,14 +34,10 @@ class RiskMessageGenerator extends NoteMessageGenerator {
   /**
    * Static method to lookup risk for a note
    * @param {string} noteId - The note ID
-   * @param {Object} [vaultManager] - Optional vault manager contract (for backwards compatibility)
-   * @param {Object} [dyad] - Optional DYAD contract (for backwards compatibility)
    * @returns {Promise<Object>} Risk information
    */
-  static async lookupRisk(noteId, vaultManager, dyad) {
-    const contracts = getContracts();
-    vaultManager = vaultManager || contracts.vaultManager;
-    dyad = dyad || contracts.dyad;
+  static async lookupRisk(noteId) {
+    const { vaultManager, dyad } = getContracts();
     
     const cr = await vaultManager.collatRatio(noteId);
     const crFloat = formatNumber(ethers.formatUnits(cr, 18), 3);

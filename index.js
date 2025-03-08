@@ -67,7 +67,7 @@ async function claim() {
 
 async function lookupRisk(noteId) {
   // Use the static method from RiskMessageGenerator
-  return RiskMessageGenerator.lookupRisk(noteId, vaultManager, dyad);
+  return RiskMessageGenerator.lookupRisk(noteId);
 }
 
 async function noteMessages(noteId, shouldClaim = false) {
