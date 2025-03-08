@@ -27,11 +27,11 @@ class RecommendationMessageGenerator extends NoteMessageGenerator {
       await RiskMessageGenerator.lookupRisk(noteId);
     
     if (shouldBurn) {
-      messages.push('---');
-      messages.push(`Recommendation: Burn ${formatNumber(dyadToBurn, 0)} DYAD`);
+      messages.push('--- Recommendation ---');
+      messages.push(`Burn ${formatNumber(dyadToBurn, 0)} DYAD`);
     } else if (shouldMint) {
-      messages.push('---');
-      messages.push(`Recommendation: Mint ${formatNumber(dyadToMint, 0)} DYAD`);
+      messages.push('--- Recommendation ---');
+      messages.push(`Mint ${formatNumber(dyadToMint, 0)} DYAD`);
     }
     
     return messages;

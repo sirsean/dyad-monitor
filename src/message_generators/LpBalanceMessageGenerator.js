@@ -74,7 +74,6 @@ class LpBalanceMessageGenerator extends NoteMessageGenerator {
           messages.push(`${symbol0}: ${balance0Formatted}`);
           messages.push(`${symbol1}: ${balance1Formatted}`);
           messages.push(comparisonMessage);
-          messages.push('---');
         }
       }
       
