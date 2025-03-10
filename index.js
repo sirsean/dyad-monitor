@@ -494,7 +494,7 @@ async function withdrawFromVaultCommand(asset, amount) {
 async function listNotesCommand() {
   const notes = await GraphNote.search();
   const filteredNotes = notes
-    .filter(note => note.collatRatio <= ethers.parseUnits('1.6', 18))
+    .filter(note => note.collatRatio <= ethers.parseUnits('1.7', 18))
     .filter(note => note.dyad >= ethers.parseUnits('100', 18))
     .sort((a, b) => Number(ethers.formatUnits(a.collatRatio, 18)) - Number(ethers.formatUnits(b.collatRatio, 18)));
 
@@ -505,7 +505,7 @@ async function listNotesCommand() {
       const [exoValue, keroValue] = await vaultManager.getVaultsValues(note.id);
       
       // Format values for display
-      const crFormatted = ethers.formatUnits(note.collatRatio, 18);
+      const crFormatted = formatNumber(ethers.formatUnits(note.collatRatio, 18), 4);
       const dyadFormatted = ethers.formatUnits(note.dyad, 18);
       const exoValueFormatted = ethers.formatUnits(exoValue, 18);
       
