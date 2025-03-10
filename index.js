@@ -8,7 +8,7 @@ import Pricer from './src/Pricer.js';
 import discordClient from './src/Discord.js';
 import walletInstance from './src/Wallet.js';
 import { openContract, fetchRewards, getNoteIds, getFirstNoteId, formatNumber } from './src/utils.js';
-import { MIN_CR } from './src/constants.js';
+import { MIN_CR, ADDRESSES } from './src/constants.js';
 import { 
   RewardMessageGenerator, 
   RiskMessageGenerator, 
