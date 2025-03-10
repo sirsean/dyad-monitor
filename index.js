@@ -498,9 +498,23 @@ async function listNotesCommand() {
     .filter(note => note.dyad >= ethers.parseUnits('100', 18))
     .sort((a, b) => Number(ethers.formatUnits(a.collatRatio, 18)) - Number(ethers.formatUnits(b.collatRatio, 18)));
 
-  filteredNotes.forEach(note => {
-    console.log(note.toString());
-  });
+  console.log('Fetching vault values for notes...');
+  for (const note of filteredNotes) {
+    try {
+      // Get vault values from the contract
+      const [exoValue, keroValue] = await vaultManager.getVaultsValues(note.id);
+      
+      // Format values for display
+      const crFormatted = ethers.formatUnits(note.collatRatio, 18);
+      const dyadFormatted = ethers.formatUnits(note.dyad, 18);
+      const exoValueFormatted = ethers.formatUnits(exoValue, 18);
+      
+      console.log(`Note ID: ${note.id} | CR: ${crFormatted} | DYAD: ${dyadFormatted} | Exo Value: ${exoValueFormatted} USD`);
+    } catch (error) {
+      console.error(`Error getting values for note ${note.id}:`, error.message);
+      console.log(note.toString());
+    }
+  }
 }
 
 async function liquidateNoteCommand(noteId, dyadAmount) {
