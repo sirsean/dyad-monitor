@@ -21,11 +21,33 @@ class EventFetcher {
       // Get the Liquidate event filter
       const filter = this.vaultManager.filters.Liquidate();
       
-      // Query for events
-      const events = await this.vaultManager.queryFilter(filter, startBlock, endBlock);
+      // Define the maximum range per query (RPC limit)
+      const MAX_BLOCK_RANGE = 500;
+      let allEvents = [];
+      
+      // If endBlock is 'latest', get the current block number
+      if (endBlock === 'latest') {
+        endBlock = await this.provider.getBlockNumber();
+      }
+      
+      console.log(`Querying events in chunks from ${startBlock} to ${endBlock}`);
+      
+      // Query for events in chunks to avoid exceeding the RPC limit
+      for (let fromBlock = startBlock; fromBlock <= endBlock; fromBlock += MAX_BLOCK_RANGE) {
+        const toBlock = Math.min(fromBlock + MAX_BLOCK_RANGE - 1, endBlock);
+        console.log(`Querying chunk: ${fromBlock} to ${toBlock}`);
+        
+        const events = await this.vaultManager.queryFilter(filter, fromBlock, toBlock);
+        console.log(`Found ${events.length} events in blocks ${fromBlock}-${toBlock}`);
+        
+        // Add to our collection
+        allEvents = allEvents.concat(events);
+      }
+      
+      console.log(`Total events found: ${allEvents.length}`);
       
       // Process and format the events
-      return await Promise.all(events.map(async (event) => {
+      return await Promise.all(allEvents.map(async (event) => {
         const { id, from, to, amount } = event.args;
         const block = await event.getBlock();
         
