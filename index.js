@@ -573,6 +573,68 @@ async function searchLiquidationsCommand(startDate, endDate) {
   }
 }
 
+async function searchNoteIdLiquidationsCommand(noteId, startDate, endDate) {
+  if (!noteId) {
+    console.error('Note ID is required');
+    return;
+  }
+
+  // If startDate is not provided, default to 30 days ago
+  if (!startDate) {
+    const thirtyDaysAgo = new Date();
+    thirtyDaysAgo.setDate(thirtyDaysAgo.getDate() - 30);
+    startDate = thirtyDaysAgo.toISOString().split('T')[0];
+  }
+
+  // If endDate is not provided, use current date
+  if (!endDate) {
+    endDate = new Date().toISOString().split('T')[0];
+  }
+
+  try {
+    const eventFetcher = new EventFetcher({
+      provider,
+      vaultManager
+    });
+
+    // Convert dates to block numbers
+    const startBlock = await eventFetcher.dateToBlock(startDate);
+    const endBlock = await eventFetcher.dateToBlock(endDate);
+    
+    console.log(`Searching liquidations for Note ID ${noteId} from ${startDate} (block ${startBlock}) to ${endDate} (block ${endBlock})`);
+    
+    // Fetch liquidation events for the specific noteId
+    const events = await eventFetcher.fetchLiquidateEventsByNoteId(noteId, startBlock, endBlock);
+    
+    if (events.length === 0) {
+      console.log(`No liquidation events found for Note ID ${noteId} in the specified time range.`);
+      return;
+    }
+    
+    console.log(`Found ${events.length} liquidation events for Note ID ${noteId}:`);
+    console.log('------------------------------------------------------');
+    
+    // Display events in a tabular format
+    events.forEach((event, index) => {
+      console.log(`Liquidation #${index + 1}:`);
+      console.log(`Date: ${event.timestamp}`);
+      console.log(`Note ID: ${event.id}`);
+      console.log(`From: ${event.from}`);
+      console.log(`To Note: ${event.to}`);
+      console.log(`Amount: ${formatNumber(event.amountFormatted, 2)} DYAD`);
+      console.log(`TX: ${event.transactionHash}`);
+      console.log('------------------------------------------------------');
+    });
+    
+    // Calculate total amount liquidated
+    const totalAmount = events.reduce((sum, event) => sum + parseFloat(event.amountFormatted), 0);
+    console.log(`Total liquidated: ${formatNumber(totalAmount, 2)} DYAD`);
+    
+  } catch (error) {
+    console.error(`Error searching liquidations for Note ID ${noteId}: ${error.message}`);
+  }
+}
+
 async function liquidateNoteCommand(noteId, dyadAmount) {
   const mintedDyad = await dyad.mintedDyad(noteId);
   const dyadAmountBigInt = ethers.parseUnits(dyadAmount, 18);
@@ -665,6 +727,13 @@ async function main() {
     .argument('<startDate>', 'Start date (YYYY-MM-DD)')
     .argument('[endDate]', 'End date (YYYY-MM-DD), defaults to current date')
     .action(searchLiquidationsCommand);
+
+  program.command('search-note-liquidations')
+    .description('Search for liquidation events for a specific note ID')
+    .argument('<noteId>', 'Note ID to search for')
+    .argument('[startDate]', 'Start date (YYYY-MM-DD), defaults to 30 days ago')
+    .argument('[endDate]', 'End date (YYYY-MM-DD), defaults to current date')
+    .action(searchNoteIdLiquidationsCommand);
 
   program.command('check-vault')
     .description('Check vault asset balance for a note')
