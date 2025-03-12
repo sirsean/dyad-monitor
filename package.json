@@ -6,7 +6,17 @@
   "type": "module",
   "scripts": {
     "test": "jest",
-    "test:watch": "jest --watch"
+    "test:watch": "jest --watch",
+    "list": "node index.js list",
+    "check": "node index.js check-note",
+    "check-risk": "node index.js check-risk",
+    "check-claimable": "node index.js check-claimable",
+    "balance": "node index.js balance",
+    "mint": "node index.js mint",
+    "burn": "node index.js burn",
+    "claim": "node index.js claim",
+    "monitor": "node index.js monitor",
+    "watch": "node index.js watch"
   },
   "keywords": [],
   "author": "",
