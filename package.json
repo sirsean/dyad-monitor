@@ -17,7 +17,8 @@
     "claim": "node index.js claim",
     "monitor": "node index.js monitor",
     "watch": "node index.js watch",
-    "search-liquidations": "node index.js search-liquidations"
+    "search-liquidations": "node index.js search-liquidations",
+    "search-note-liquidations": "node index.js search-note-liquidations"
   },
   "keywords": [],
   "author": "",
