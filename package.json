@@ -16,7 +16,8 @@
     "burn": "node index.js burn",
     "claim": "node index.js claim",
     "monitor": "node index.js monitor",
-    "watch": "node index.js watch"
+    "watch": "node index.js watch",
+    "search-liquidations": "node index.js search-liquidations"
   },
   "keywords": [],
   "author": "",

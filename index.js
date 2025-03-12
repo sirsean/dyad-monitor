@@ -5,6 +5,7 @@ import GraphNote from './src/GraphNote.js';
 import DailyCheckProcessor from './src/DailyCheckProcessor.js';
 import ExecutionSchedule from './src/ExecutionSchedule.js';
 import Pricer from './src/Pricer.js';
+import EventFetcher from './src/EventFetcher.js';
 import discordClient from './src/Discord.js';
 import walletInstance from './src/Wallet.js';
 import { openContract, fetchRewards, getNoteIds, getFirstNoteId, formatNumber } from './src/utils.js';
@@ -517,6 +518,61 @@ async function listNotesCommand() {
   }
 }
 
+async function searchLiquidationsCommand(startDate, endDate) {
+  if (!startDate) {
+    console.error('Start date is required. Format: YYYY-MM-DD');
+    return;
+  }
+
+  // If endDate is not provided, use current date
+  if (!endDate) {
+    endDate = new Date().toISOString().split('T')[0];
+  }
+
+  try {
+    const eventFetcher = new EventFetcher({
+      provider,
+      vaultManager
+    });
+
+    // Convert dates to block numbers
+    const startBlock = await eventFetcher.dateToBlock(startDate);
+    const endBlock = await eventFetcher.dateToBlock(endDate);
+    
+    console.log(`Searching liquidations from ${startDate} (block ${startBlock}) to ${endDate} (block ${endBlock})`);
+    
+    // Fetch liquidation events
+    const events = await eventFetcher.fetchLiquidateEvents(startBlock, endBlock);
+    
+    if (events.length === 0) {
+      console.log('No liquidation events found in the specified time range.');
+      return;
+    }
+    
+    console.log(`Found ${events.length} liquidation events:`);
+    console.log('------------------------------------------------------');
+    
+    // Display events in a tabular format
+    events.forEach((event, index) => {
+      console.log(`Liquidation #${index + 1}:`);
+      console.log(`Date: ${event.timestamp}`);
+      console.log(`Note ID: ${event.id}`);
+      console.log(`From: ${event.from}`);
+      console.log(`To Note: ${event.to}`);
+      console.log(`Amount: ${formatNumber(event.amountFormatted, 2)} DYAD`);
+      console.log(`TX: ${event.transactionHash}`);
+      console.log('------------------------------------------------------');
+    });
+    
+    // Calculate total amount liquidated
+    const totalAmount = events.reduce((sum, event) => sum + parseFloat(event.amountFormatted), 0);
+    console.log(`Total liquidated: ${formatNumber(totalAmount, 2)} DYAD`);
+    
+  } catch (error) {
+    console.error(`Error searching liquidations: ${error.message}`);
+  }
+}
+
 async function liquidateNoteCommand(noteId, dyadAmount) {
   const mintedDyad = await dyad.mintedDyad(noteId);
   const dyadAmountBigInt = ethers.parseUnits(dyadAmount, 18);
@@ -603,6 +659,12 @@ async function main() {
     .argument('<noteId>', 'Note ID to liquidate')
     .argument('<dyadAmount>', 'Amount of DYAD to liquidate')
     .action(liquidateNoteCommand);
+
+  program.command('search-liquidations')
+    .description('Search for liquidation events in a date range')
+    .argument('<startDate>', 'Start date (YYYY-MM-DD)')
+    .argument('[endDate]', 'End date (YYYY-MM-DD), defaults to current date')
+    .action(searchLiquidationsCommand);
 
   program.command('check-vault')
     .description('Check vault asset balance for a note')
