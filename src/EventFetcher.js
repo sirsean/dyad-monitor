@@ -129,6 +129,74 @@ class EventFetcher {
       throw error;
     }
   }
+  
+  /**
+   * Fetches Liquidate events by liquidator address (to field) from the VaultManager contract
+   * @param {string} liquidatorAddress - The liquidator address to search for
+   * @param {number} startBlock - The starting block to search from
+   * @param {number} endBlock - The ending block to search to (defaults to 'latest')
+   * @returns {Promise<Array>} - The liquidation events for the specified liquidator
+   */
+  async fetchLiquidateEventsByLiquidator(liquidatorAddress, startBlock, endBlock = 'latest') {
+    console.log(`Fetching Liquidate events for liquidator ${liquidatorAddress} from block ${startBlock} to ${endBlock}`);
+
+    try {
+      // Get the Liquidate event filter (we'll filter by "to" address during processing)
+      const filter = this.vaultManager.filters.Liquidate();
+
+      // Define the maximum range per query (RPC limit)
+      const MAX_BLOCK_RANGE = 500;
+      let allEvents = [];
+
+      // If endBlock is 'latest', get the current block number
+      if (endBlock === 'latest') {
+        endBlock = await this.provider.getBlockNumber();
+      }
+
+      console.log(`Querying events from ${startBlock} to ${endBlock} in chunks of ${MAX_BLOCK_RANGE} blocks...`);
+
+      // Query for events in chunks to avoid exceeding the RPC limit
+      for (let fromBlock = startBlock; fromBlock <= endBlock; fromBlock += MAX_BLOCK_RANGE) {
+        const toBlock = Math.min(fromBlock + MAX_BLOCK_RANGE - 1, endBlock);
+
+        const events = await this.vaultManager.queryFilter(filter, fromBlock, toBlock);
+        
+        // Filter events by liquidator address
+        const filteredEvents = events.filter(event => 
+          event.args.to.toLowerCase() === liquidatorAddress.toLowerCase()
+        );
+        
+        if (filteredEvents.length > 0) {
+          console.log(`Found ${filteredEvents.length} events for liquidator in blocks ${fromBlock}-${toBlock}`);
+        }
+
+        // Add to our collection
+        allEvents = allEvents.concat(filteredEvents);
+      }
+
+      console.log(`Search complete. Total events found: ${allEvents.length}`);
+
+      // Process and format the events
+      return await Promise.all(allEvents.map(async (event) => {
+        const { id, from, to, amount } = event.args;
+        const block = await event.getBlock();
+
+        return {
+          id: id.toString(),
+          from: from.toString(),
+          to: to.toString(),
+          amount: amount,
+          amountFormatted: ethers.formatUnits(amount, 18),
+          blockNumber: event.blockNumber,
+          transactionHash: event.transactionHash,
+          timestamp: new Date(block.timestamp * 1000).toISOString()
+        };
+      }));
+    } catch (error) {
+      console.error(`Error fetching liquidation events for liquidator ${liquidatorAddress}:`, error.message);
+      throw error;
+    }
+  }
 
   /**
    * Converts a date string to a block number
