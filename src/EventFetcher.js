@@ -141,8 +141,10 @@ class EventFetcher {
     console.log(`Fetching Liquidate events for liquidator ${liquidatorAddress} from block ${startBlock} to ${endBlock}`);
 
     try {
-      // Get the Liquidate event filter (we'll filter by "to" address during processing)
-      const filter = this.vaultManager.filters.Liquidate();
+      // Create a filter for the Liquidate event with the specific liquidator address
+      // null for the first parameter (id) means we don't filter by it
+      // We filter by the second parameter (to) which is the liquidator address
+      const filter = this.vaultManager.filters.Liquidate(null, null, liquidatorAddress);
 
       // Define the maximum range per query (RPC limit)
       const MAX_BLOCK_RANGE = 500;
@@ -161,17 +163,12 @@ class EventFetcher {
 
         const events = await this.vaultManager.queryFilter(filter, fromBlock, toBlock);
         
-        // Filter events by liquidator address
-        const filteredEvents = events.filter(event => 
-          event.args.to.toLowerCase() === liquidatorAddress.toLowerCase()
-        );
-        
-        if (filteredEvents.length > 0) {
-          console.log(`Found ${filteredEvents.length} events for liquidator in blocks ${fromBlock}-${toBlock}`);
+        if (events.length > 0) {
+          console.log(`Found ${events.length} events for liquidator in blocks ${fromBlock}-${toBlock}`);
         }
 
         // Add to our collection
-        allEvents = allEvents.concat(filteredEvents);
+        allEvents = allEvents.concat(events);
       }
 
       console.log(`Search complete. Total events found: ${allEvents.length}`);
