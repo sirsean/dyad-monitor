@@ -250,15 +250,15 @@ async function burnCommand(noteId, amount) {
   console.log(`Note: ${noteId}`);
   console.log(`Before Burn - Collateral Ratio: ${currentCRFloat}`);
 
-  const mintedDyad = await dyad.mintedDyad(noteId);
+  const noteDebt = await vaultManager.getNoteDebt(noteId);
 
-  if (dyadAmount > mintedDyad) {
-    console.error(`Cannot burn ${amount} DYAD: Note only has ${ethers.formatUnits(mintedDyad, 18)} DYAD minted`);
+  if (dyadAmount > noteDebt) {
+    console.error(`Cannot burn ${amount} DYAD: Note only has ${ethers.formatUnits(noteDebt, 18)} DYAD minted`);
     return;
   }
 
   const totalValue = await vaultManager.getTotalValue(noteId);
-  const newDyadTotal = mintedDyad - dyadAmount;
+  const newDyadTotal = noteDebt - dyadAmount;
 
   let newCRFloat;
   if (newDyadTotal === BigInt(0)) {
@@ -698,11 +698,11 @@ async function searchLiquidatorLiquidationsCommand(liquidatorAddress, startDate,
 }
 
 async function liquidateNoteCommand(noteId, dyadAmount) {
-  const mintedDyad = await dyad.mintedDyad(noteId);
+  const noteDebt = await vaultManager.getNoteDebt(noteId);
   const dyadAmountBigInt = ethers.parseUnits(dyadAmount, 18);
 
-  if (dyadAmountBigInt > mintedDyad) {
-    console.error(`Cannot liquidate more than the minted amount. Note ${noteId} has ${ethers.formatUnits(mintedDyad, 18)} DYAD minted.`);
+  if (dyadAmountBigInt > noteDebt) {
+    console.error(`Cannot liquidate more than the minted amount. Note ${noteId} has ${ethers.formatUnits(noteDebt, 18)} DYAD minted.`);
     return;
   }
 

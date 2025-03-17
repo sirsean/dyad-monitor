@@ -33,12 +33,13 @@ class LiquidationMonitor {
             // Get vault values from the contract
             const [exoValue, keroValue] = await this.vaultManager.getVaultsValues(note.id);
 
-            // Get collateral ratio directly from vault manager contract
+            // Get collateral ratio and debt directly from vault manager contract
             const actualCR = await this.vaultManager.collatRatio(note.id);
+            const noteDebt = await this.vaultManager.getNoteDebt(note.id);
 
             // Format values for display
             const crFormatted = ethers.formatUnits(actualCR, 18);
-            const dyadFormatted = ethers.formatUnits(note.dyad, 18);
+            const dyadFormatted = ethers.formatUnits(noteDebt, 18);
             const exoValueFormatted = ethers.formatUnits(exoValue, 18);
 
             // Print only the required information
