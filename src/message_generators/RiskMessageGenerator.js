@@ -43,11 +43,11 @@ class RiskMessageGenerator extends NoteMessageGenerator {
     const crFloat = formatNumber(ethers.formatUnits(cr, 18), 3);
 
     const totalValue = await vaultManager.getTotalValue(noteId);
-    const mintedDyad = await dyad.mintedDyad(noteId);
+    const noteDebt = await vaultManager.getNoteDebt(noteId);
     const targetDebt = parseFloat(ethers.formatUnits(totalValue, 18)) / TARGET_CR;
 
-    const dyadToBurn = parseFloat(ethers.formatUnits(mintedDyad, 18)) - targetDebt;
-    const dyadToMint = targetDebt - parseFloat(ethers.formatUnits(mintedDyad, 18));
+    const dyadToBurn = parseFloat(ethers.formatUnits(noteDebt, 18)) - targetDebt;
+    const dyadToMint = targetDebt - parseFloat(ethers.formatUnits(noteDebt, 18));
 
     return {
       cr,
