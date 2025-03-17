@@ -149,8 +149,8 @@ async function checkNoteCommand(noteId) {
   const crFloat = formatNumber(ethers.formatUnits(cr, 18), 3);
   console.log(`Collateral Ratio for Note ${noteId}: ${crFloat}`);
 
-  const mintedDyad = await dyad.mintedDyad(noteId);
-  console.log(`Minted DYAD: $${ethers.formatUnits(mintedDyad, 18)}`);
+  const noteDebt = await vaultManager.getNoteDebt(noteId);
+  console.log(`Note Debt: $${ethers.formatUnits(noteDebt, 18)}`);
 
   const vaults = await vaultManager.getVaults(noteId);
   vaults.forEach(async (vaultAddress) => {
