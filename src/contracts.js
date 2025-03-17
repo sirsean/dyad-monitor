@@ -15,7 +15,7 @@ let dyad;
  * @returns {Object} - The initialized contracts
  */
 async function initialize(provider) {
-  vaultManager = await openContract(ADDRESSES.VAULT_MANAGER, 'abi/VaultManagerV5.json', provider);
+  vaultManager = await openContract(ADDRESSES.VAULT_MANAGER, 'abi/VaultManagerV7.json', provider);
   keroseneVault = await openContract(ADDRESSES.KEROSENE_VAULT, 'abi/KeroseneVault.json', provider);
   dyadLpStakingFactory = await openContract(ADDRESSES.DYAD_LP_STAKING_FACTORY, 'abi/DyadLPStakingFactory.json', provider);
   dyad = await openContract(ADDRESSES.DYAD, 'abi/Dyad.json', provider);
