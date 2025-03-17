@@ -306,11 +306,11 @@ async function balanceCommand() {
     console.log(`Wallet DYAD Balance: ${ethers.formatUnits(walletBalance, 18)} DYAD`);
 
     const noteIds = getNoteIds();
-    console.log('\nMinted DYAD by Note:');
+    console.log('\nDYAD Debt by Note:');
 
     for (const noteId of noteIds) {
-      const mintedAmount = await dyad.mintedDyad(noteId);
-      console.log(`Note ${noteId}: ${ethers.formatUnits(mintedAmount, 18)} DYAD`);
+      const debtAmount = await vaultManager.getNoteDebt(noteId);
+      console.log(`Note ${noteId}: ${ethers.formatUnits(debtAmount, 18)} DYAD`);
 
       const cr = await vaultManager.collatRatio(noteId);
       const crFloat = formatNumber(ethers.formatUnits(cr, 18), 3);
