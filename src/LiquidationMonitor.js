@@ -45,7 +45,7 @@ class LiquidationMonitor {
             console.log(`Note ID: ${note.id} | CR: ${crFormatted} | DYAD: ${dyadFormatted} | Exo Value: ${exoValueFormatted} USD`);
 
             // Check if note meets criteria for Discord notification:
-            if (parseFloat(crFormatted) < 1.5 && exoValue > note.dyad) {
+            if (parseFloat(crFormatted) < 1.5 && exoValue > 0) {
               const notificationMessage = [
                 `🚨 Liquidation Opportunity 🚨`,
                 `Note ID: ${note.id}`,
