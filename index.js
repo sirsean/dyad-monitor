@@ -199,8 +199,8 @@ async function mintCommand(noteId, amount) {
   console.log(`Before Mint - Collateral Ratio: ${currentCRFloat}`);
 
   const totalValue = await vaultManager.getTotalValue(noteId);
-  const mintedDyad = await dyad.mintedDyad(noteId);
-  const newDyadTotal = mintedDyad + dyadAmount;
+  const noteDebt = await vaultManager.getNoteDebt(noteId);
+  const newDyadTotal = noteDebt + dyadAmount;
 
   const newCR = totalValue * BigInt(10**18) / newDyadTotal;
   const newCRFloat = formatNumber(ethers.formatUnits(newCR, 18), 3);
